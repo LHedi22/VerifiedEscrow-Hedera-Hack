@@ -1,0 +1,3 @@
+# Hash fixtures must be byte-exact: never rewrite line endings (TRD §5.4)
+packages/canonical/fixtures/** -text
+*.sh eol=lf

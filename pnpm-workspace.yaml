@@ -1,0 +1,23 @@
+packages:
+  - web
+  - hedera-svc
+  - contracts
+  - packages/*
+
+# @hashgraph/cryptography -> react-native-get-random-values declares a hard peer on
+# react-native; without this, auto-install-peers pulls all of React Native into Node.
+packageExtensions:
+  react-native-get-random-values:
+    peerDependenciesMeta:
+      react-native:
+        optional: true
+
+peerDependencyRules:
+  allowedVersions:
+    # @hashgraph/sdk pins bn.js exactly; patch releases are compatible
+    bn.js: "5"
+    # @hashgraph/sdk 2.81 depends on protobufjs 8 itself; its proto beta still peers 7.5.4
+    protobufjs: "8"
+
+onlyBuiltDependencies:
+  - esbuild

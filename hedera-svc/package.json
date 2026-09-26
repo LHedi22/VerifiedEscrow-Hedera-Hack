@@ -1,0 +1,22 @@
+{
+  "name": "hedera-svc",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "recycle": "tsx --env-file=.env scripts/recycle.ts"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.50.0",
+    "canonical": "workspace:*",
+    "ethers": "^6.13.0",
+    "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.16.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
