@@ -1,3 +1,7 @@
+# LF everywhere: core.autocrlf is on for this machine, and CRLF breaks .sh/.sql under WSL/psql
+* text=auto eol=lf
+*.docx binary
+
 # Hash fixtures must be byte-exact: never rewrite line endings (TRD §5.4)
 packages/canonical/fixtures/** -text
 *.sh eol=lf
