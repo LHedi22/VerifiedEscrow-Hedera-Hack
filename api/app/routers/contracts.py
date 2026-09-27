@@ -198,6 +198,6 @@ def dispute(contract_id: int, body: Dispute, persona: str | None = Depends(perso
 
 
 @router.post("/{contract_id}/retry", status_code=202)
-def retry(contract_id: int):
+async def retry(contract_id: int):  # async: pipeline.start() needs the running event loop
     pipeline.retry(contract_id)
     return JSONResponse(status_code=202, content={"contract_id": contract_id, "status": "resuming"})
