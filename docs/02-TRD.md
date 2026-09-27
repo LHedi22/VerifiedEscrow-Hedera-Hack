@@ -450,9 +450,10 @@ This removes the most common Hedera-EVM surprises before the real contract depen
 
 ### 8.1 Model runtime
 
-- Ollama `POST /api/chat` with `stream: false`, `format: <JSON schema>`, `keep_alive: -1` (or set `OLLAMA_KEEP_ALIVE=-1` for the Ollama server), and `options: { temperature: 0, seed: 42, num_ctx: 8192 }`.
+- Ollama `POST /api/chat` with `stream: false`, `format: <JSON schema>`, `keep_alive: -1` (or set `OLLAMA_KEEP_ALIVE=-1` for the Ollama server), and `options: { temperature: 0, seed: 42, num_ctx: 8192, num_predict: N }`, where `N` is **512 for criteria extraction** and **1200 for evaluation**.
   - Ollama unloads an idle model after 5 minutes by default. Without `keep_alive`, the model warmed at T-60 min is cold again on stage.
   - `num_ctx` must be set explicitly because Ollama's default context is smaller than a full SOW + deliverable prompt.
+  - `num_predict` caps the reply. Without it, a model that starts repeating itself (seen with `qwen2.5:3b` looping inside `reasoning`) never closes the JSON and the call runs until the 90 s timeout. A reply that hits the cap (`done_reason == "length"`) counts as a failed attempt under §8.4, so it is retried, and three of them produce an EVALUATION_ERROR record. It never hangs until the timeout.
 - **One evaluation at a time:** a global `asyncio.Semaphore(1)` around Ollama calls. Two concurrent 7B generations on one laptop are slower than two sequential ones.
 - `model_version` is built at startup from `GET /api/tags` (§5.1 format).
 - Warm-up: `api` sends a tiny prompt on startup so the first live evaluation isn't a cold load.
@@ -525,6 +526,7 @@ Parse with Pydantic. An attempt fails if:
 - the JSON is invalid
 - a criterion ID is missing or unknown
 - confidence is outside [0, 1]
+- the reply hit the `num_predict` cap (`done_reason == "length"`, §8.1)
 
 On a failed attempt, retry up to 2 more times (3 attempts total, counted in `evaluations.attempts`).
 
@@ -536,7 +538,7 @@ After the third failure, **the pipeline still anchors a record** and proceeds li
 
 This matters because the contract has no hold function of its own. In v1.0 an evaluation error moved the app to `HELD` while the escrow stayed `Funded` on-chain, so the arbitrator's `resolveDispute` would have reverted ("not under review") and the funds would have been stuck (FR-9).
 
-**Infrastructure failures are different:** Ollama unreachable, or a 90 s timeout. These are not evaluation errors. The contract moves to `ERROR` at step `EVALUATING`, nothing is anchored, and **Retry** re-runs the evaluation.
+**Infrastructure failures are different:** Ollama unreachable, or a 90 s timeout. With the `num_predict` cap in place, a 90 s timeout means Ollama is unresponsive, not that the model is looping. These are not evaluation errors. The contract moves to `ERROR` at step `EVALUATING`, nothing is anchored, and **Retry** re-runs the evaluation.
 
 ## 9. Orchestration: evaluation state machine
 
@@ -746,7 +748,8 @@ verified-escrow/
 | Failure | Detection | Behaviour |
 | --- | --- | --- |
 | Ollama down before submit | Health check | 503 on submit; UI disables Submit with "Evaluator offline" |
-| Ollama down or timeout (90 s) during evaluation | httpx error | `ERROR` at `EVALUATING`; Retry re-evaluates; nothing anchored |
+| Ollama down or timeout (90 s) during evaluation | httpx error | Ollama is unresponsive, not a looping model (that case hits `num_predict` first, §8.1). `ERROR` at `EVALUATING`; Retry re-evaluates; nothing anchored |
+| Reply hits the `num_predict` cap | `done_reason == "length"` | Counts as a failed attempt (§8.4) and is retried; ×3 → EVALUATION_ERROR fail record anchored → `HELD` / `EVALUATION_ERROR` |
 | Invalid LLM output ×3 | Pydantic | EVALUATION_ERROR fail record anchored → `HELD` / `EVALUATION_ERROR` (§8.4) |
 | Record > 18 KB | Size check | 422 on submit (pre-check with a 3,000-char reasoning placeholder, on the real canonical serialization); re-checked after the record is built |
 | Funding tx fails | ethers error | Contract stays `DRAFT`; 502 `CHAIN_ERROR` with revert reason. If the call *timed out*, check HashScan for an `EscrowCreated` from the client before clicking Fund again (avoids a double escrow) |
@@ -801,12 +804,13 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | `submitVerdict` via relay | 3–6 s |
 | **Total** | **≈ 20–60 s**, if the T0.2 benchmark gate passed |
 
-## 18. Environment notes (Windows / WSL)
+## 18. Environment notes (native Windows)
 
-- Pick **one** environment for `api`, `hedera-svc`, `web` and the demo scripts (WSL2 Ubuntu recommended) and use it for every rehearsal.
-- If Ollama runs on Windows and `api` runs in WSL2, `localhost:11434` from WSL only reaches Windows with mirrored networking enabled (`networkingMode=mirrored` in `.wslconfig`). Otherwise set `OLLAMA_HOST=0.0.0.0` and use the Windows host IP. Test on Day 0.
-- Demo scripts avoid shell redirection of binary files, so they behave the same in bash and PowerShell (Schema §8.3).
+- Everything runs **natively on Windows**: `api`, `hedera-svc`, `web`, Ollama and the demo scripts. Docker Desktop runs only the Postgres container. Use this same setup for every rehearsal.
+- **`demo/reset.ps1` is the primary reset script** (created at T4.2). `demo/reset.sh` is kept only as a convenience for bash users; the demo never depends on it.
+- Demo scripts avoid shell redirection of binary files, so they behave the same in PowerShell and bash (Schema §8.3).
 - `psql` runs inside the db container (`docker compose exec db psql -U vte -d vte`); `\i /demo/tamper.sql` works because `./demo` is mounted.
+- Git on this machine has `core.autocrlf` on; the repo's `.gitattributes` forces LF (and `-text` for fixtures) so scripts and fixtures stay byte-exact.
 - If port 5432 is taken by a local Postgres install, map the container to 5433 and update `DATABASE_URL`.
 
 ## 19. Change log

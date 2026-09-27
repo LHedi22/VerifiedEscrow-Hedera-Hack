@@ -205,7 +205,7 @@ For a hackathon, success is measured by the demo and the judging rubric:
 - Hedera **testnet**. The faucet currently advertises 10 ℏ per day; Portal refills were 1,000 ℏ per 24 h as of 2024. **Verify on Day 0.** The demo uses 5 ℏ escrows plus a recycle script to stay inside either budget.
 - Testnet can be reset with 2–4 weeks' notice (`status.hedera.com`); check on Day 0.
 - Local Ollama (native install) with a 7–8B instruct model (`qwen2.5:7b-instruct`) in JSON mode on a ~16 GB laptop; 3B fallback if the speed gate fails.
-- Local Postgres in Docker; demo runs from the laptop. On Windows, all services and scripts run in one environment (WSL2 recommended; TRD §18).
+- Local Postgres in Docker; demo runs from the laptop. All services and scripts run natively on Windows, with Docker Desktop for Postgres only (TRD §18).
 - Hedera calls go through a small Node.js sidecar using the Hedera JS SDK (and Agent Kit where useful); FastAPI orchestrates.
 
 ## 11. Changes from spec v2 driven by locked decisions
