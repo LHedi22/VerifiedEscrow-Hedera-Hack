@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { accountsSummary } from "./accounts.js";
 import { config, deployment } from "./config.js";
+import { createEscrow, getEscrow, resolveDispute, submitVerdict } from "./escrow.js";
 import { HttpError, submitRecord } from "./hcs.js";
 
 const app = express();
@@ -25,6 +26,18 @@ app.post("/hcs/submit", async (req, res, next) => {
     next(e);
   }
 });
+
+const route = (fn: (req: Request) => Promise<unknown>) => async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.json(await fn(req));
+  } catch (e) {
+    next(e);
+  }
+};
+app.post("/escrow/create", route((req) => createEscrow(req.body)));
+app.post("/escrow/verdict", route((req) => submitVerdict(req.body)));
+app.post("/escrow/resolve", route((req) => resolveDispute(req.body)));
+app.get("/escrow/:id", route((req) => getEscrow(Number(req.params.id))));
 
 app.get("/accounts", async (_req, res, next) => {
   try {
