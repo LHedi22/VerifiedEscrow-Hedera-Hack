@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     database_url: str
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:7b-instruct"
+    ollama_num_ctx: int = 8192  # TRD §8.1
     confidence_threshold: float = 0.7
     hedera_svc_url: str = "http://127.0.0.1:7000"
     internal_token: str
