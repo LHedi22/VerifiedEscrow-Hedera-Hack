@@ -1,0 +1,10 @@
+{
+  "contract_id": "1",
+  "deliverable": "He said \"hi\" \\ then 'bye'\n\tindented\tline\n\\n is not a newline, \\u0041 is not A",
+  "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48",
+  "reasoning": "Backslash \\ quote \" apostrophe ' tab\t newline\n end",
+  "schema": "vte-record/1",
+  "sow": "Quote \"exactly\" and keep C:\\path\\to\\file",
+  "timestamp": "2026-09-27T10:00:00.000Z",
+  "verdict": "pass"
+}

@@ -1,0 +1,10 @@
+{
+  "contract_id": "1",
+  "deliverable": "Team: \ud83e\uddd1\u200d\ud83d\udcbb\ud83d\udc69\ud83c\udffd\u200d\ud83d\udd2c \ud83d\udc68\u200d\ud83d\udc69\u200d\ud83d\udc67\u200d\ud83d\udc66 flags \ud83c\uddf9\ud83c\uddf3 keycap 1\ufe0f\u20e3 max \udbff\udfff",
+  "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48",
+  "reasoning": "Emoji ZWJ sequences, skin tone, flag and keycap preserved.",
+  "schema": "vte-record/1",
+  "sow": "Launch post with emoji \ud83d\ude80",
+  "timestamp": "2026-09-27T10:00:00.000Z",
+  "verdict": "pass"
+}

@@ -1,0 +1,1 @@
+{"contract_id":"1","deliverable":"مرحبًا بكم في مقهى الياسمين — قهوة وشاي بالنعناع (١٢٣).","model_version":"ollama/qwen2.5:7b-instruct@845dbda0ea48","reasoning":"Mixed direction: النص سليم and ASCII 123.","schema":"vte-record/1","sow":"اكتب صفحة تعريفية لمقهى في تونس.","timestamp":"2026-09-27T10:00:00.000Z","verdict":"pass"}

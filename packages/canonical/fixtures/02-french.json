@@ -1,0 +1,10 @@
+{
+  "contract_id": "1",
+  "deliverable": "Bienvenue au caf\u00e9 \u00ab\u00a0Jasmin\u00a0\u00bb\u00a0: cr\u00e8me br\u00fbl\u00e9e, th\u00e9 \u00e0 la menthe, na\u00efvet\u00e9 et \u0153uvre d'art.",
+  "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48",
+  "reasoning": "Le texte r\u00e9pond \u00e0 la demande ; ton chaleureux.",
+  "schema": "vte-record/1",
+  "sow": "R\u00e9digez une page d'accueil pour un caf\u00e9 \u00e0 Tunis.",
+  "timestamp": "2026-09-27T10:00:00.000Z",
+  "verdict": "fail"
+}

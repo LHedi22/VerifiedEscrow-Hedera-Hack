@@ -1,0 +1,1 @@
+{"contract_id":"1","deliverable":"Bienvenue au café « Jasmin » : crème brûlée, thé à la menthe, naïveté et œuvre d'art.","model_version":"ollama/qwen2.5:7b-instruct@845dbda0ea48","reasoning":"Le texte répond à la demande ; ton chaleureux.","schema":"vte-record/1","sow":"Rédigez une page d'accueil pour un café à Tunis.","timestamp":"2026-09-27T10:00:00.000Z","verdict":"fail"}
