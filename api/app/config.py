@@ -32,5 +32,13 @@ class Settings(BaseSettings):
         """shared/deployment.json: contract address, ABI, topic ID (single source of truth)."""
         return json.loads(self.deployment_path.read_text(encoding="utf-8"))
 
+    @property
+    def topic_id(self) -> str:
+        """The demo topic. Deliberately never falls back to devTopicId (Day 1-2 experiments only)."""
+        topic = json.loads(self.deployment_path.read_text(encoding="utf-8")).get("topicId")
+        if not topic:
+            raise RuntimeError("shared/deployment.json has no topicId; run contracts/scripts/deploy.ts (T2.3)")
+        return topic
+
 
 settings = Settings()

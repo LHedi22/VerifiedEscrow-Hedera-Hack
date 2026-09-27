@@ -35,3 +35,5 @@ export function normalize(s: string): string {
   s = s.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   return s.normalize("NFC").replace(TRAILING_WS, "");
 }
+
+export * from "./links";
