@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch --env-file=.env src/index.ts",
-    "recycle": "tsx --env-file=.env scripts/recycle.ts"
+    "recycle": "tsx --env-file=.env scripts/recycle.ts",
+    "create-accounts": "tsx scripts/create-accounts.ts"
   },
   "dependencies": {
     "@hashgraph/sdk": "^2.50.0",
