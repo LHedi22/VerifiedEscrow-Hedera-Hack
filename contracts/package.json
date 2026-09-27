@@ -8,13 +8,18 @@
   },
   "devDependencies": {
     "@hashgraph/sdk": "^2.50.0",
+    "@nomicfoundation/hardhat-ethers": "^3.1.3",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@typechain/hardhat": "^9.1.0",
     "@types/chai": "^4.3.20",
     "@types/mocha": "^10.0.9",
     "chai": "^4.5.0",
     "dotenv": "^16.4.0",
+    "ethers": "^6.17.0",
     "hardhat": "^2.22.0",
     "ts-node": "^10.9.2",
+    "typechain": "^8.3.2",
     "typescript": "^5.6.0"
   }
 }
