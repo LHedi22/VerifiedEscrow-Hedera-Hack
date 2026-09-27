@@ -26,8 +26,7 @@ EVALUATION_SYSTEM = (PROMPTS / "evaluation_system.txt").read_text(encoding="utf-
 
 MAX_ATTEMPTS = 3
 TIMEOUT_S = 90
-CRITERIA_MAX_TOKENS = 512  # TRD §8.1
-EVALUATION_MAX_TOKENS = 1200  # TRD §8.1
+# num_predict caps (TRD §8.1): settings.ollama_criteria_num_predict = 512, settings.ollama_eval_num_predict = 1200
 REASONING_CAP = 3000
 EVALUATION_ERROR_REASONING = (
     "EVALUATION_ERROR: the evaluator returned invalid output 3 times; "
@@ -197,7 +196,7 @@ async def extract_criteria(sow: str) -> tuple[list[dict], int, list[str]]:
     failures: list[str] = []
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            raw = await _chat(CRITERIA_SYSTEM, f"<sow>\n{sow}\n</sow>", CRITERIA_SCHEMA, CRITERIA_MAX_TOKENS)
+            raw = await _chat(CRITERIA_SYSTEM, f"<sow>\n{sow}\n</sow>", CRITERIA_SCHEMA, settings.ollama_criteria_num_predict)
             parsed = CriteriaOut.model_validate_json(raw)
             return [c.model_dump() for c in parsed.criteria], attempt, failures
         except (AttemptFailed, ValidationError, ValueError) as e:
@@ -250,7 +249,7 @@ async def evaluate(sow: str, deliverable: str, criteria: list[dict] | None = Non
     raw_last: dict | None = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
-            raw = await _chat(EVALUATION_SYSTEM, user, EVALUATION_SCHEMA, EVALUATION_MAX_TOKENS)
+            raw = await _chat(EVALUATION_SYSTEM, user, EVALUATION_SCHEMA, settings.ollama_eval_num_predict)
             try:
                 raw_last = json.loads(raw)
             except json.JSONDecodeError:
