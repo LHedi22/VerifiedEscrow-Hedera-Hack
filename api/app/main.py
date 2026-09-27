@@ -28,7 +28,10 @@ async def lifespan(_app: FastAPI):
     resumed = pipeline.resume_all()  # TRD §9: resume EVALUATING/ANCHORING/CONFIRMING/SUBMITTING_VERDICT
     if resumed:
         log.info("resumed pipelines: %s", resumed)
-    asyncio.create_task(_warm_up())
+    if settings.ollama_warm_up:
+        asyncio.create_task(_warm_up())
+    else:
+        log.info("evaluator warm-up skipped (OLLAMA_WARM_UP=0)")
     yield
 
 

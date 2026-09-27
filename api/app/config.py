@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     ollama_num_ctx: int = 8192  # TRD §8.1
     ollama_criteria_num_predict: int = 512  # TRD §8.1 caps
     ollama_eval_num_predict: int = 1200
+    ollama_warm_up: bool = True  # False while building UI: keeps the 7B model out of RAM (start-all -Dev)
     confidence_threshold: float = 0.7
     hedera_svc_url: str = "http://127.0.0.1:7000"
     internal_token: str
