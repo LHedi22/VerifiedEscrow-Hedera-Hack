@@ -83,4 +83,6 @@ async def health():
     return {
         "db": results[0], "ollama": results[1], "hedera_svc": results[2], "mirror": results[3],
         "model_version": model_version, "topic_id": dep.get("topicId"), "escrow_contract": dep.get("contractAddress"),
+        # OLLAMA_EVAL_NUM_PREDICT set (env or api/.env) = the Day 2 forced evaluation-error mode. Must be false on stage.
+        "forced_eval_error": "ollama_eval_num_predict" in settings.model_fields_set,
     }

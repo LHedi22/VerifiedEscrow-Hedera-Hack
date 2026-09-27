@@ -403,7 +403,7 @@ Also open one HashScan tab on the topic.
 | # | Window | Action | Audience sees | Time |
 | --- | --- | --- | --- | --- |
 | 1 | W1 | Dashboard → **+ New contract** → "Use example SOW" (fills title, SOW, 5 ℏ) → Create draft | Contract in DRAFT | 0:30 |
-| 2 | W1 | **Fund escrow** → confirm | Balance drops; tx pill; HashScan shows the contract call | 0:30 |
+| 2 | W1 | **Fund escrow** → confirm, then click the funding tx pill ↗ and show the `createEscrow` call on HashScan. This is a natural ~30 s beat: the criteria are being extracted from the SOW meanwhile (TRD §8.1 fallback 1), so step 3's wait is the evaluation only | Balance drops; tx pill; HashScan shows the contract call | 0:30 |
 | 3 | W2 | Open contract → **Insert sample → good** (or paste) → Submit | Stepper starts | 0:15 |
 | 4 | W2 | Narrate while the stepper runs; click the "Anchored · msgs #N–M" link | HCS messages live on HashScan | 0:45 |
 | 5 | W2 | Stepper reaches **Paid** | Green PASS card; freelancer balance +5 ℏ | 0:15 |
@@ -421,7 +421,7 @@ The total is **4:15** (v1.0 said "about 4.5 minutes"; the rows add up to 4:15).
 
 **Fallbacks:**
 
-- If steps 3–5 stall for more than 60 s, switch to seeded **S1** (already RELEASED) and continue from step 6. The pipeline keeps running in the background.
+- If steps 3–5 stall for more than **90 s**, switch to seeded **S1** (already RELEASED) and continue from step 6. The pipeline keeps running in the background. (v1.1 said 60 s. On the demo laptop, deliverable → Paid measured 70–85 s on Day 2, so 60 s would trigger on a healthy run.)
 - If Ollama fails, use the FR-29 replay (P1). Its record says `replay/…` in `model_version`, and the UI shows the chip.
 - If testnet is down, play the backup screen recording.
 
@@ -439,3 +439,4 @@ After the demo, run `demo/reset` (a few seconds, FR-28) and `demo/recycle`, then
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | Verification routes use the escrow ID. The verdict becomes visible at mirror confirmation (SUBMITTING_VERDICT row added); ERROR is shown as paused with Retry; EVALUATION_ERROR hold copy. MATCH banner reworded to claim only what is proven; anchored record shown from Hedera; new red states (wrong escrow, unexpected topic, multiple records); P1 oracle-consistency row. Criteria table labelled "not anchored in v1". Funding tx shown as EVM hash. Amounts 5 ℏ. "Use example SOW" fills title too; DEMO_MODE Insert-sample menu (P1); presence-based SOW helper text. Run sheet: total corrected to 4:15, tamper via `\i /demo/tamper.sql` inside the container, closing line corrected per HIP-478, reset + recycle + refresh after the demo. Two-profile wording fixed. |
+| 27 Sep (build) | §9: after funding, click the funding tx on HashScan (a natural ~30 s beat while criteria are extracted); stall fallback moved from 60 s to 90 s. |

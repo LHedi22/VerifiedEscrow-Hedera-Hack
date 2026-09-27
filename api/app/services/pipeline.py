@@ -90,12 +90,26 @@ def retry(contract_id: int) -> None:
     start(contract_id)
 
 
-def start_criteria_extraction(contract_id: int) -> None:
-    """At funding: extract and cache criteria so the live wait is the evaluation step only (TRD §8.1)."""
+def start_criteria_extraction(contract_id: int) -> asyncio.Task:
+    """At funding: extract and cache criteria so the live wait is the evaluation step only (TRD §8.1).
+    One extraction per contract: a task that is running (or already finished) is returned, never duplicated."""
     t = _criteria_tasks.get(contract_id)
-    if t and not t.done():
-        return
-    _criteria_tasks[contract_id] = asyncio.create_task(_extract_criteria(contract_id), name=f"criteria-{contract_id}")
+    if t is None:
+        t = _criteria_tasks[contract_id] = asyncio.create_task(_extract_criteria(contract_id), name=f"criteria-{contract_id}")
+    return t
+
+
+async def _wait_for_criteria(contract_id: int) -> None:
+    """Evaluation step: reuse the funding-time extraction. If it is still running, wait for it (shielded, so a
+    cancelled pipeline never cancels the shared extraction). Its failure is logged, not raised: evaluate() then
+    extracts once itself."""
+    t = _criteria_tasks.get(contract_id)
+    if t is None:
+        return  # e.g. api restarted after funding: nothing running, evaluate() extracts
+    try:
+        await asyncio.shield(t)
+    except Exception as e:
+        log.warning("funding-time criteria extraction for %s failed: %r", contract_id, e)
 
 
 async def _extract_criteria(contract_id: int) -> None:
@@ -145,9 +159,7 @@ async def _run(contract_id: int) -> None:
 # ------------------------------------------------------------------ steps
 async def _evaluate(contract_id: int) -> None:
     """EVALUATING -> ANCHORING. Ollama unreachable/timeout -> ERROR (nothing anchored)."""
-    pending = _criteria_tasks.get(contract_id)
-    if pending and not pending.done():
-        await pending  # funding-time extraction still running: use its result
+    await _wait_for_criteria(contract_id)  # never a second extraction while the funding-time one runs
     with SessionLocal() as s:
         c = s.get(Contract, contract_id)
         sow = c.sow

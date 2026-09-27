@@ -9,7 +9,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import select
 
 from app.errors import ApiError
-from app.models import ChainTx, Contract, Deliverable, HcsAnchor, Persona, TimelineEvent
+from app.models import ChainTx, Contract, Deliverable, Evaluation, HcsAnchor, Persona, TimelineEvent
 
 AMOUNT_RE = re.compile(r"^\d+(\.\d{1,8})?$")
 ROLES = ("client", "freelancer", "arbitrator")
@@ -102,6 +102,8 @@ def contract_out(s, c: Contract) -> dict:
         "hold_reason": c.hold_reason,
         "escrow_id": c.escrow_id,
         "disputed": c.disputed,
+        # Criteria cached (funding-time extraction done): lets the stepper show "Reading the SOW…" until then.
+        "criteria_ready": bool(s.scalar(select(Evaluation.criteria).where(Evaluation.contract_id == c.id))),
         "error": {"step": c.error_step, "message": c.error_message} if c.status == "ERROR" else None,
         "deliverable": {"content": d.content, "submitted_at": iso(d.submitted_at)} if d else None,
         "anchor": None if a is None else {

@@ -167,7 +167,10 @@ Build in this order. The verification page comes **second**, not last (spec §10
 ## 10. Hackathon day — Sat 3 Oct pre-flight (T-60 min)
 
 - [ ] Hotspot tested as backup network
-- [ ] `docker compose up`; `start-all`; `/health` all green
+- [ ] Windows sleep off (Settings → Power: "never" while plugged in); charger connected
+- [ ] Docker Desktop running (`docker version` shows a Server version; it doesn't survive sleep)
+- [ ] `OLLAMA_EVAL_NUM_PREDICT` **unset**, in both the shell and `api/.env`
+- [ ] `docker compose up -d db`; `scripts/start-all.ps1` (db, hedera-svc, api and the production `web` build, each in its own window); `/health` all green **and `forced_eval_error: false`** (footer not red)
 - [ ] Ollama warm (send one evaluation); `OLLAMA_KEEP_ALIVE=-1` confirmed (`ollama ps` shows "Forever")
 - [ ] `/dev/selftest` green
 - [ ] `demo/reset` run; **every browser window refreshed**; S2 verifies **green**, with the oracle row ✓
@@ -222,3 +225,4 @@ Build in this order. The verification page comes **second**, not last (spec §10
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | Day 0: key format, faucet reality check, testnet status, Ollama speed gate, one-environment rule, `.gitattributes`, Next 14 pin. Day 1: `@noble/hashes`, four-leg self-test with `.canonical` files, dev topic, `executeAll` + queue + `/accounts`, fee measurement, eval suite on `06-DEMO-CONTENT.md` × 3 runs, reassembly tests. Day 2: tests provided (8), deploy creates the demo topic, per-signer mutex, pipeline hardening (atomic claim, EVALUATION_ERROR path, resume rules), recycle script, fallback with memo commitment. Day 3: verification page per v1.1 (bundled topic, contract_id check, anchored panel). Wed: slot/venue questions, seed assertions, cross-shell reset, token association for the NFT. Thu: oracle-consistency check promoted to P1 and moved first. Pre-flight, Q&A (HIP-478 corrected; re-anchoring; privacy), risks and DoD updated. |
+| 27 Sep (build) | §10 pre-flight: Windows sleep off, Docker Desktop running, `OLLAMA_EVAL_NUM_PREDICT` unset and `forced_eval_error: false` on `/health`, `scripts/start-all.ps1` (production `web` build). |

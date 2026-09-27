@@ -426,6 +426,12 @@ Local tests run in wei, not tinybars, so they can't catch Hedera unit issues. Th
 - **Recipient accounts:** payouts go to the freelancer's/client's EVM alias address. Accounts with `receiverSigRequired` would make transfers fail; Portal-created accounts don't set it.
 - **Gas:** set an explicit `gasLimit` (400,000) on `ethers` calls, because relay estimation is occasionally flaky. You pay for at least 80% of it (see §4).
 - **Nonces:** `hedera-svc` serializes transactions **per signer** (one mutex per wallet). Two concurrent `ethers` calls from the same wallet can collide on the nonce.
+- **Hashio relay fixes** (found at T2.4; without them, contract calls failed intermittently):
+  - **No request batching:** `JsonRpcProvider` gets `batchMaxCount: 1`. Batched calls got an unparseable reply from Hashio, which ethers reports as "could not coalesce error".
+  - **Explicit legacy `gasPrice`,** read from `eth_gasPrice` before each transaction. ethers' EIP-1559 estimate sometimes came out at 218 wei, below the relay's minimum of about 1.14e12, and the relay returned HTTP 400.
+  - **`staticCall` preflight** before sending. A call the contract would revert returns `409 WOULD_REVERT` with the contract's own reason (e.g. `not under review`), and nothing is sent.
+  - **Retries with a pinned nonce:** `submitVerdict` and `resolveDispute` are retried up to 3 times on transient relay errors, so a retry can't apply twice. `createEscrow` is never retried blindly, because of the double-escrow risk (§14).
+  - To see the relay's real error, log `e.info.responseBody`.
 - **EVM version:** pinned to `shanghai`. If a deploy ever fails with an invalid-opcode error, rebuild with `evmVersion: "paris"`.
 
 ### 7.4 Day 1 contract spike (30 min, before relying on it)
@@ -461,10 +467,25 @@ This removes the most common Hedera-EVM surprises before the real contract depen
   1. start criteria extraction when the contract is funded, not when the deliverable arrives (§8.2)
   2. switch to `qwen2.5:3b-instruct` and re-run the evaluator suite
 - **Benchmark result (27 Sep, demo laptop: GTX 1650 Ti 4 GB, 2.2 of 5.4 GB of the model on GPU):** both steps took 65–84 s warm, and `num_ctx` 4096 didn't help (85 s). **Fallback 1 applies:** with criteria extracted at funding time, the evaluation step takes 29 s warm (two runs: 29.3 s, 29.1 s). So the pipeline extracts criteria when the contract is funded (§8.2), and the 7B model stays.
+- **Fallback 1 is active (since T2.7).** Measured timings:
+
+  | What | Time |
+  | --- | --- |
+  | T0.2, evaluation step alone, criteria cached, warm | 29.3 s, 29.1 s |
+  | Day 2 gate, evaluation step inside the pipeline | 30–60 s |
+  | Day 2 gate, deliverable → RELEASED end to end | 70–85 s |
+  | Evaluator suite, one case with both steps (T1.9) | 42–55 s |
+
+  How it runs:
+  - `POST /fund` starts one background extraction per contract, and returns without waiting for it.
+  - If the deliverable arrives while that extraction is still running, the evaluation step waits for the same task. It never starts a second criteria call; this is covered by `api/tests/test_criteria_once.py`.
+  - Only if the funding-time extraction failed, or the `api` restarted in between, does the evaluation step extract criteria itself, once.
+  - `Contract.criteria_ready` (Schema §5.2) tells the stepper whether it's still "Reading the SOW…".
+- **Forced evaluation error (Day 2 gate only):** `OLLAMA_EVAL_NUM_PREDICT=8` makes every evaluation reply hit the cap, which runs the real §8.4 path. While it is set, `/health` reports `forced_eval_error: true` and the UI footer turns red. It must be unset on stage (Plan §10).
 
 ### 8.2 Two-step pipeline
 
-**Step 1 — Criteria extraction.** Results are cached per contract in `evaluations.criteria`; there is no separate `acceptance_criteria` table. It runs when the deliverable is submitted, or at funding time if the benchmark requires it.
+**Step 1 — Criteria extraction.** Results are cached per contract in `evaluations.criteria`; there is no separate `acceptance_criteria` table. It runs when the deliverable is submitted, or at funding time if the benchmark requires it. **It runs at funding time:** the benchmark required it (§8.1).
 
 Output schema:
 ```json
@@ -820,3 +841,4 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | HIP-478 claim corrected (§15). `/verify` keyed by escrow ID; browser takes topic and contract from bundled `deployment.json`; checks `contract_id`. One topic per deployment. HCS: `executeAll` (v1.0's `execute()` returns only chunk 1), single-flight submits, bounded mirror query, reassembly rules. Contract: `verdictPassed`, distinct parties, non-zero hash, solc pinned; 8 tests written and passing. Oracle-consistency check promoted to P1 with 4 checks. EVALUATION_ERROR now anchored + submitted as a fail, so the arbitrator can resolve it (v1.0 left funds stuck). Row lock replaced by atomic claim; resume covers `EVALUATING`; `SUBMITTING_VERDICT` reconciles from chain; `ERROR` is resumable. Visibility gate unified on mirror confirmation. Normalization: explicit ASCII strip set, NUL rejected; timestamp generator; `model_version` format unified. `@noble/hashes` replaces `crypto.subtle`. Ollama `keep_alive`, `num_ctx`, semaphore, benchmark gate. Injection regex backstop. Criteria stored in `evaluations.criteria`. Keys/units/nonce/fee gotchas. Demo amount 5 ℏ; faucet and testnet-reset checks. `.env` one variable per line; `HCS_TOPIC_ID` moved to `deployment.json`. Windows/WSL notes. Trust model: re-anchoring attack, public-content limitation. |
+| 27 Sep (build) | §8.1: fallback 1 active, measured timings, single criteria extraction per contract, `forced_eval_error`. §8.2: criteria run at funding. §7.3: Hashio relay fixes (no batching, explicit `gasPrice`, `staticCall` preflight, pinned-nonce retries). |

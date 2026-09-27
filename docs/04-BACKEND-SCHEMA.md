@@ -314,6 +314,7 @@ v1.0's check `status IN ('DRAFT') OR escrow_id IS NOT NULL OR status = 'ERROR'` 
   "hold_reason": "FAILED_VERDICT",
   "escrow_id": 7,
   "disputed": false,
+  "criteria_ready": true,
   "error": null,
   "deliverable": { "content": "…", "submitted_at": "2026-10-03T14:21:40.002Z" },
   "anchor": {
@@ -335,15 +336,16 @@ v1.0's check `status IN ('DRAFT') OR escrow_id IS NOT NULL OR status = 'ERROR'` 
 
 - `deliverable` is visible to all three personas once submitted. `anchor` and `txs` are always public.
 - `error` is `{ "step": "CONFIRMING", "message": "…" }` when `status = ERROR`.
+- `criteria_ready` is `true` once the criteria extracted at funding are cached in `evaluations.criteria` (TRD §8.1 fallback 1). While it's `false` during `EVALUATING`, the stepper shows "Reading the SOW…" as a sub-step. It says nothing about the verdict.
 - The verdict is not part of this object; it comes from `/evaluation` under the visibility gate.
 
 ### 5.3 Endpoints
 
 #### `GET /health`
 ```json
-{ "db": "ok", "ollama": "ok", "hedera_svc": "ok", "mirror": "ok", "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48", "topic_id": "0.0.6001", "escrow_contract": "0x…" }
+{ "db": "ok", "ollama": "ok", "hedera_svc": "ok", "mirror": "ok", "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48", "topic_id": "0.0.6001", "escrow_contract": "0x…", "forced_eval_error": false }
 ```
-`topic_id` and `escrow_contract` come from `shared/deployment.json`. They are shown in the footer. The verification page uses its own bundled copy, never these values.
+`topic_id` and `escrow_contract` come from `shared/deployment.json`. `forced_eval_error` is `true` while `OLLAMA_EVAL_NUM_PREDICT` is set (the Day 2 forced evaluation-error mode, TRD §8.1); the footer turns red. They are shown in the footer. The verification page uses its own bundled copy, never these values.
 
 #### `GET /personas`
 ```json
@@ -509,6 +511,8 @@ Hashing the view's output, rather than in-memory values, proves the stored recor
 
 (v1.0 said "from `.env`", but `api/.env` holds no account data; the keys and account IDs live only in `hedera-svc`.)
 
+**Personas are created at `api` startup.** If the `personas` table is empty when `api` starts, it runs this same step: it reads `hedera-svc GET /accounts` and inserts the three rows above (`app/routers/personas.py`, `sync_personas`). Existing rows are left alone, because `demo/reset` restores them from the snapshot. This was pulled forward from `seed.py` at T2.6, since no contract can be created before the persona rows exist. `seed.py` step 1 does the same thing and is a no-op when the rows are already there.
+
 ### 8.2 Seed contracts (`demo/seed.py`, step 2 — runs the real pipeline on testnet)
 
 All texts are in `06-DEMO-CONTENT.md`, copied into `demo/seed_content.json`. Every seed uses **5 ℏ**. `seed.py` stops with an error if any seed ends in a state other than the expected one: re-run it rather than snapshotting a wrong state.
@@ -625,3 +629,4 @@ SELECT c.id, c.escrow_id, c.status, e.verdict, left(e.reasoning, 60) AS reasonin
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | `/verify` keyed by escrow ID with the `confirmed_at` gate. Atomic claim instead of a row lock. EVALUATION_ERROR is anchored and held on-chain. SUBMITTING_VERDICT reconcile row. ERROR → retry row. Checks: ERROR ⇔ `error_step`, amount ≤ 100 ℏ, reasoning ≤ 3,000, record ≤ 18,000, sequence sanity. `hcs_anchors` sequences NOT NULL (from `executeAll` receipts). `chain_txs.events` array. `/hcs/submit` takes `expectedHash`; `/accounts` replaces `/balances`; `verdictPassed` in `/escrow/:id`. Seed personas read from `hedera-svc`. Seeds reference `06-DEMO-CONTENT.md`, 5 ℏ each, and `seed.py` asserts end states. Snapshot/reset rebuilt to be data-only, container-side and PowerShell-safe. `tamper.sql` uses `\gset` and ON_ERROR_STOP. New recycle script. Size figures measured. |
+| 27 Sep (build) | §8.1: personas are created at `api` startup. §5.2: `criteria_ready`. §5.3 `/health`: `forced_eval_error`. |
