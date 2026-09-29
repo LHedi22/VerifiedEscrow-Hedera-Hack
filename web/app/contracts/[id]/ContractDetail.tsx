@@ -95,7 +95,8 @@ export default function ContractDetail({ id }: { id: number }) {
   });
   const { data: health } = useSWR<Health>("/health", publicFetcher, { refreshInterval: 10_000 });
 
-  const [modal, setModal] = useState<null | "fund" | "submit" | "release" | "refund">(null);
+  const [modal, setModal] = useState<null | "fund" | "submit" | "release" | "refund" | "dispute">(null);
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [modalErr, setModalErr] = useState<React.ReactNode>(null);
   const [content, setContent] = useState("");
@@ -162,6 +163,10 @@ export default function ContractDetail({ id }: { id: number }) {
     window.dispatchEvent(new CustomEvent("vte:toast", {
       detail: { message: `Dispute resolved: ${release ? "released" : "refunded"}`, tx: out.txs.find((t) => t.kind === "RESOLVE_DISPUTE")?.tx_hash },
     }));
+  });
+  const dispute = () => act(async () => {  // FR-19 (P1): off-chain flag; funds already moved
+    await api(`/contracts/${id}/dispute`, { method: "POST", body: JSON.stringify({ reason: reason.trim() }) });
+    window.dispatchEvent(new CustomEvent("vte:toast", { detail: { message: "Flagged as disputed — verify the record" } }));
   });
   async function retry() {
     setRetrying(true);
@@ -267,6 +272,18 @@ export default function ContractDetail({ id }: { id: number }) {
             ) : <div className="card muted" data-testid="waiting">{isMine("client") ? "Waiting for the deliverable." : "Funded — waiting for the deliverable."}</div>
           )}
 
+          {c.status === "RELEASED" && c.disputed && (
+            <div className="card dispute-banner" data-testid="dispute-banner">
+              <strong>Disputed.</strong> Check what was anchored before anyone paid:{" "}
+              {c.escrow_id !== null && <a href={`/verify/${c.escrow_id}`} data-testid="dispute-verify">Verify this record →</a>}
+            </div>
+          )}
+          {c.status === "RELEASED" && !c.disputed && (isMine("client") || isMine("freelancer")) && (
+            <div className="row" style={{ justifyContent: "flex-end" }}>
+              <button className="btn link" onClick={() => setModal("dispute")} data-testid="flag-dispute">Flag as disputed</button>
+            </div>
+          )}
+
           {c.status === "HELD" && isMine("arbitrator") && (
             <div className="card action-card" data-testid="resolve-actions">
               <div><strong>Your decision</strong><div className="muted small">Verify the record first, then judge the anchored version.</div></div>
@@ -314,6 +331,17 @@ export default function ContractDetail({ id }: { id: number }) {
         <Modal title="Submit deliverable" confirmLabel="Submit" onClose={close} onConfirm={submit} busy={busy} error={modalErr} testid="modal-submit">
           <p><strong>One submission only.</strong> The AI verdict will be anchored on Hedera before anyone sees it.</p>
           <p className="muted">{len.toLocaleString()} characters.</p>
+        </Modal>
+      )}
+      {modal === "dispute" && (
+        <Modal title="Flag dispute" confirmLabel="Flag" onClose={close} onConfirm={dispute} busy={busy} error={modalErr}
+               confirmDisabled={reason.trim().length < 1} testid="modal-dispute">
+          <p className="muted">Off-chain only: the funds have already moved. It marks the contract and points everyone to the verification page.</p>
+          <label className="field">
+            <span className="label">Reason</span>
+            <textarea className="input" rows={4} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)}
+                      placeholder="What doesn't look right?" data-testid="dispute-reason" data-autofocus />
+          </label>
         </Modal>
       )}
       {(modal === "release" || modal === "refund") && (

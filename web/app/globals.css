@@ -382,3 +382,4 @@ details.card > summary { cursor: pointer; color: var(--text); }
 .bad-mark { color: var(--red); font-weight: 800; }
 .oracle-checks { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
 .oracle-checks li { padding: 2px 0; }
+.dispute-banner { background: var(--amber-bg); border-color: #f0c67a; color: #6b3d00; }
