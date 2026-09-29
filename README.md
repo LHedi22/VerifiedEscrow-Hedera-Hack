@@ -4,6 +4,8 @@ An AI judges a text deliverable against a statement of work (SOW). The **full ev
 
 Built for the Hedera Cross Campus Challenge (demo on 3 Oct 2026). It runs on Hedera **testnet**.
 
+📄 **Technical report (11 pages):** [PDF](docs/report/Verified-Then-Paid-Escrow-Report.pdf) · [Word](docs/report/Verified-Then-Paid-Escrow-Report.docx). It covers the problem, the architecture, the trust model, the test results and the limitations.
+
 ## Why it's trustworthy
 
 - **The record is fixed before the verdict is revealed.** It holds the SOW, the deliverable, the verdict, the reasoning, the model version and a timestamp, as canonical JSON. It's submitted to an HCS topic that only the oracle can write to. The app shows the verdict only after the mirror node has confirmed those exact bytes by hash.
