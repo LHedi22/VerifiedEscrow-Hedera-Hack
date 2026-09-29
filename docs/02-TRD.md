@@ -829,6 +829,8 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | `submitVerdict` via relay | 3–6 s |
 | **Total** | **≈ 20–60 s**, if the T0.2 benchmark gate passed |
 
+**Measured on the demo laptop (29 Sep, production build, model warm, criteria reused from seeded S1):** deliverable → Paid took **47–53 s** in three live runs (evaluation 33–35 s, anchoring 0–4 s, mirror confirmation 2–5 s, `submitVerdict` 7–10 s). **NFR-2 (≤ 60 s) is met.** A ≤ 40 s stage target was set on 29 Sep as a stretch goal and is not met; the decision was to accept about 50 s with no model change.
+
 ## 18. Environment notes (native Windows)
 
 - Everything runs **natively on Windows**: `api`, `hedera-svc`, `web`, Ollama and the demo scripts. Docker Desktop runs only the Postgres container. Use this same setup for every rehearsal.
@@ -843,5 +845,5 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | HIP-478 claim corrected (§15). `/verify` keyed by escrow ID; browser takes topic and contract from bundled `deployment.json`; checks `contract_id`. One topic per deployment. HCS: `executeAll` (v1.0's `execute()` returns only chunk 1), single-flight submits, bounded mirror query, reassembly rules. Contract: `verdictPassed`, distinct parties, non-zero hash, solc pinned; 8 tests written and passing. Oracle-consistency check promoted to P1 with 4 checks. EVALUATION_ERROR now anchored + submitted as a fail, so the arbitrator can resolve it (v1.0 left funds stuck). Row lock replaced by atomic claim; resume covers `EVALUATING`; `SUBMITTING_VERDICT` reconciles from chain; `ERROR` is resumable. Visibility gate unified on mirror confirmation. Normalization: explicit ASCII strip set, NUL rejected; timestamp generator; `model_version` format unified. `@noble/hashes` replaces `crypto.subtle`. Ollama `keep_alive`, `num_ctx`, semaphore, benchmark gate. Injection regex backstop. Criteria stored in `evaluations.criteria`. Keys/units/nonce/fee gotchas. Demo amount 5 ℏ; faucet and testnet-reset checks. `.env` one variable per line; `HCS_TOPIC_ID` moved to `deployment.json`. Windows/WSL notes. Trust model: re-anchoring attack, public-content limitation. |
-| 30 Sep (build) | §8.2: criteria cache by `sow_hash`. |
+| 30 Sep (build) | §8.2: criteria cache by `sow_hash`. §17: measured 47–53 s; NFR-2 met; 40 s was a stretch target. |
 | 27 Sep (build) | §8.1: fallback 1 active, measured timings, single criteria extraction per contract, `forced_eval_error`. §8.2: criteria run at funding. §7.3: Hashio relay fixes (no batching, explicit `gasPrice`, `staticCall` preflight, pinned-nonce retries). |

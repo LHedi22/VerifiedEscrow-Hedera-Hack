@@ -171,6 +171,7 @@ Build in this order. The verification page comes **second**, not last (spec §10
 - [ ] Free RAM **≥ 2 GB** with the 7B model loaded (Task Manager → Performance → Memory → Available)
 - [ ] Windows sleep off (Settings → Power: "never" while plugged in); charger connected
 - [ ] Docker Desktop running (`docker version` shows a Server version; it doesn't survive sleep)
+- [ ] After any Docker restart: `docker stop mongodb` (another project's container with `restart=always`; don't change its policy). `docker ps` shows only `hederahack-db-1`
 - [ ] `OLLAMA_EVAL_NUM_PREDICT` **unset**, in both the shell and `api/.env`
 - [ ] `docker compose up -d db`; `scripts/start-all.ps1` (db, hedera-svc, api and the production `web` build, each in its own window); `/health` all green **and `forced_eval_error: false`** (footer not red)
 - [ ] Ollama warm (send one evaluation); `OLLAMA_KEEP_ALIVE=-1` confirmed (`ollama ps` shows "Forever")

@@ -425,6 +425,8 @@ The total is **4:10** (v1.0 said "about 4.5 minutes"; v1.1 said 4:15). Step 4 wa
 
 - If steps 3–5 stall for more than **90 s**, switch to seeded **S1** (already RELEASED) and continue from step 6. The pipeline keeps running in the background. (v1.1 said 60 s. On the demo laptop, deliverable → Paid measured 70–85 s on Day 2, so 60 s would trigger on a healthy run.)
 - If Ollama fails, use the FR-29 replay (P1). Its record says `replay/…` in `model_version`, and the UI shows the chip.
+- **Ollama slow or down → restart `api` with `DEMO_REPLAY=1`** (close the api window, then in `api/`: `$env:DEMO_REPLAY='1'; .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000`). `/health` then shows `replay_mode: true`.
+- **Expected pace:** steps 3–5 take about 50 s (47–53 s measured on 29 Sep, TRD §17). ≤ 40 s was a stretch target, not met; NFR-2's ≤ 60 s is.
 - If testnet is down, play the backup screen recording.
 
 After the demo, run `demo/reset` (a few seconds, FR-28) and `pnpm --filter hedera-svc recycle`, then refresh every window.
