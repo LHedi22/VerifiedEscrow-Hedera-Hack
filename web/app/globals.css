@@ -383,3 +383,21 @@ details.card > summary { cursor: pointer; color: var(--text); }
 .oracle-checks { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
 .oracle-checks li { padding: 2px 0; }
 .dispute-banner { background: var(--amber-bg); border-color: #f0c67a; color: #6b3d00; }
+
+/* ---------------------------------------------------------------- T5.3 projector polish (1280 px at 125 % = 1024 CSS px) */
+.step { min-width: 0; }
+.step-sub { overflow-wrap: anywhere; }
+.step-took { display: block; margin-top: 2px; }
+.checklist li { flex-wrap: nowrap; align-items: baseline; }
+.checklist li > span:nth-child(2) { flex: 0 1 auto; min-width: 0; }
+.checklist .ck { align-self: center; }
+.ck-detail { white-space: nowrap; }
+@media (max-width: 1200px) {
+  .detail-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+  .verify-grid { grid-template-columns: minmax(0, 1fr) 340px; }
+  .stepper { gap: 4px; }
+  .step-label { font-size: 15px; }
+  .step-sub { font-size: 13px; }
+  .vbanner { font-size: 22px; padding: 16px 20px; }
+}
+@media (max-width: 1200px) { .consistency { font-size: 15px; gap: 6px; padding: 8px 10px; } }

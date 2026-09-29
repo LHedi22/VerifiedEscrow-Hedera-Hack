@@ -32,7 +32,7 @@ export default function OnChainPanel({ c }: { c: Contract }) {
           return (
             <div key={kind}>
               <dt>{TX_LABEL[kind]}</dt>
-              <dd data-testid={`tx-${kind}`}>{tx ? <HashPill kind="evmtx" id={tx.tx_hash} /> : <span className="muted">—</span>}</dd>
+              <dd data-testid={`tx-${kind}`}>{tx ? <HashPill kind="evmtx" id={tx.tx_hash} copy /> : <span className="muted">—</span>}</dd>
             </div>
           );
         })}

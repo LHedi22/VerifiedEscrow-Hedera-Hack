@@ -113,7 +113,7 @@ export default function Stepper({ c }: { c: Contract }) {
                 {done && !isPaused && (
                   <>
                     {doneLabel(s)}
-                    {took !== undefined && <span className="muted mono nowrap"> · {secs(took)}</span>}
+                    {took !== undefined && <span className="muted mono step-took">{secs(took)}</span>}
                     {s.key === "funded" && c.status === "FUNDED" && criteriaLine}
                   </>
                 )}
