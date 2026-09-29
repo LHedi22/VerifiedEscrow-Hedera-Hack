@@ -212,3 +212,18 @@ The branch `opt2-short-output` changes the prompt (evidence ≤ 150 characters, 
   | oracle | 893.55 ℏ |
 
 - **Free RAM:** 1.79 GB with everything up and the model loaded.
+
+## Part 3: eval_suite on the shipped prompt (tag `v0.9-feature-complete`)
+
+- **Tag:** `v0.9-feature-complete` = `5e25bb6`. From here, only fixes found in rehearsal get committed.
+- **Question:** does option 2's S1 flip also happen on `main`'s shipped prompt? `main` has the 1,500 / 300 character limits and evaluation `num_predict` 1200. Three runs, both steps, model warm. Log: `docs/progress/day4/main-eval-suite.log`.
+
+| Run | S1 | S2 | S3 | E4 | E5 | E6 | Correct |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ✓ pass (5/5, conf 1.0) | ✓ fail (4/5) | ✓ fail, **flagged** | ✓ pass | ✓ pass | ✓ fail | 6/6 |
+| 2 | ✓ pass (5/5, conf 1.0) | ✓ fail (4/5) | ✓ fail, **flagged** | ✓ pass | ✓ pass | ✓ fail | 6/6 |
+| 3 | ✓ pass (5/5, conf 1.0) | ✓ fail (4/5) | ✓ fail, **flagged** | ✓ pass | ✓ pass | ✓ fail | 6/6 |
+
+- **Result: PASS, 18/18.** S1 never flipped. No case flipped between runs, and every case took 1 attempt. Total 942 s; per case (both steps) 45–62 s.
+- **Conclusion:** the S1 flip is specific to option 2's shorter prompt. The shipped prompt stays as it is, and no stage fallback change is needed.
+- **Fallbacks stay as documented** (App Flow §9): seeded S1 if the live run stalls; `DEMO_REPLAY=1` if Ollama is slow or down.
