@@ -8,7 +8,7 @@ import { fetchWindow, reassemble } from "canonical/hcs";
 import { API_URL, type VerifyResponse } from "./api";
 import { ABI, CONTRACT_ADDRESS, MIRROR_URL, TOPIC_ID } from "./deployment";
 
-export type StepKey = "db" | "hcs" | "escrow" | "dbHash" | "hcsHash";
+export type StepKey = "db" | "hcs" | "escrow" | "dbHash" | "hcsHash" | "oracle";
 export type StepState = "pending" | "running" | "ok" | "fail";
 export type Step = { key: StepKey; state: StepState; label: string; detail?: string };
 
@@ -36,6 +36,20 @@ export type Outcome =
   | { kind: "match"; dbHash: string; hcsHash: string; diff: DiffRow[] }
   | { kind: "mismatch"; dbHash: string; hcsHash: string; diff: DiffRow[] };
 
+/** P1 oracle-consistency check (FR-25, TRD §11 step 7): does the escrow contract commit to the anchored record? */
+export type OracleChecks = { hash: boolean; verdict: boolean; sow: boolean; exists: boolean; all: boolean };
+
+export function oracleChecks(chain: ChainEscrow, rec: Record<string, string>, hcsHash: string): OracleChecks {
+  const sowHash = "0x" + bytesHash(new TextEncoder().encode(rec.sow ?? ""));
+  const c = {
+    hash: chain.verdictHash === "0x" + hcsHash,
+    verdict: chain.verdictPassed === (rec.verdict === "pass"),
+    sow: chain.sowHash === sowHash,
+    exists: chain.status !== "None",
+  };
+  return { ...c, all: c.hash && c.verdict && c.sow && c.exists };
+}
+
 export type DiffRow = { field: string; db: string | undefined; hcs: string | undefined; same: boolean };
 
 export type Verification = {
@@ -45,7 +59,9 @@ export type Verification = {
   appStatus?: string;
   anchor?: Anchor;
   hcsRecord?: Record<string, string>; // authoritative content: shown from Hedera, not from the app
+  hcsHash?: string;
   chain?: ChainEscrow | { error: string };
+  oracle?: OracleChecks; // P1 (FR-25): set once both the chain read and the anchored record are in
 };
 
 const STATUS = ["None", "Funded", "Released", "Held", "Refunded"] as const;
@@ -76,6 +92,7 @@ const LABELS: Record<StepKey, string> = {
   escrow: "Anchored record belongs to this escrow",
   dbHash: "Hashed displayed record in your browser",
   hcsHash: "Hashed HCS record in your browser",
+  oracle: "Escrow contract commits to the same record",
 };
 
 export function initialSteps(): Step[] {
@@ -110,34 +127,45 @@ export async function verify(escrowId: number, onUpdate: (v: Verification) => vo
     return v;
   };
 
-  // On-chain read runs alongside; it fills the evidence panel and never decides MATCH (P0).
-  readEscrow(escrowId).then(
-    (chain) => { v.chain = chain; emit(); },
-    (e) => { v.chain = { error: String(e?.message ?? e) }; emit(); },
+  // The on-chain read (FR-25) runs alongside the P0 checks and is folded in by finishAll():
+  // it can turn a check red, never a result green.
+  const chainP = readEscrow(escrowId).then(
+    (chain) => { v.chain = chain; emit(); return chain; },
+    (e) => { v.chain = { error: String(e?.message ?? e) }; emit(); return null; },
   );
+  const finishAll = async (outcome: Outcome) => {
+    const chain = await chainP;
+    if (chain && v.hcsRecord && v.hcsHash) {
+      v.oracle = oracleChecks(chain, v.hcsRecord, v.hcsHash);
+      step("oracle", v.oracle.all ? "ok" : "fail", v.oracle.all ? undefined : "on-chain commitment differs");
+    } else {
+      step("oracle", "pending", chain ? undefined : "couldn't read the escrow contract");
+    }
+    return finish(outcome);
+  };
 
   // 1. Displayed record from the app.
   step("db", "running");
   let res: VerifyResponse;
   try {
     const r = await fetch(`${API_URL}/verify/${escrowId}`, { cache: "no-store" });
-    if (r.status === 404) return finish({ kind: "not_found" });
-    if (!r.ok) return finish({ kind: "api_error", message: `api HTTP ${r.status}` });
+    if (r.status === 404) return finishAll({ kind: "not_found" });
+    if (!r.ok) return finishAll({ kind: "api_error", message: `api HTTP ${r.status}` });
     res = await r.json();
   } catch {
-    return finish({ kind: "api_error", message: "Backend offline" });
+    return finishAll({ kind: "api_error", message: "Backend offline" });
   }
   v.dbContractId = res.db_contract_id;
   v.appStatus = res.status;
   if (!res.record || !res.anchor) {
     step("db", "ok", `status ${res.status}`);
-    return finish({ kind: "not_anchored", status: res.status });
+    return finishAll({ kind: "not_anchored", status: res.status });
   }
   step("db", "ok");
   // The backend's pointers must agree with this page's bundled deployment (TRD §6.2).
-  if (res.anchor.topic_id !== TOPIC_ID) return finish({ kind: "unexpected_topic", apiTopic: res.anchor.topic_id });
+  if (res.anchor.topic_id !== TOPIC_ID) return finishAll({ kind: "unexpected_topic", apiTopic: res.anchor.topic_id });
   if (res.escrow.contract_address?.toLowerCase() !== CONTRACT_ADDRESS)
-    return finish({ kind: "unexpected_contract", apiContract: res.escrow.contract_address });
+    return finishAll({ kind: "unexpected_contract", apiContract: res.escrow.contract_address });
   v.anchor = { ...res.anchor };
 
   // 2. Anchored bytes straight from the mirror node, bundled topic ID.
@@ -148,11 +176,11 @@ export async function verify(escrowId: number, onUpdate: (v: Verification) => vo
     got = reassemble(await fetchWindow(MIRROR_URL, TOPIC_ID, first, last), res.anchor.tx_id);
   } catch (e: any) {
     step("hcs", "fail", String(e?.message ?? e));
-    return finish({ kind: "mirror_unreachable", message: String(e?.message ?? e) });
+    return finishAll({ kind: "mirror_unreachable", message: String(e?.message ?? e) });
   }
   if (!got.ok) {
     step("hcs", "fail", `${got.have} of ${got.total || res.anchor.chunk_count} chunks`);
-    return finish({ kind: "incomplete", have: got.have, total: got.total || res.anchor.chunk_count });
+    return finishAll({ kind: "incomplete", have: got.have, total: got.total || res.anchor.chunk_count });
   }
   const n = got.chunks.length;
   v.anchor.consensusTimestamp = got.chunks[n - 1].consensus_timestamp;
@@ -167,12 +195,12 @@ export async function verify(escrowId: number, onUpdate: (v: Verification) => vo
     if (typeof hcsRecord !== "object" || hcsRecord === null) throw new Error("not an object");
   } catch {
     step("escrow", "fail", "anchored bytes are not a v1 record");
-    return finish({ kind: "unparseable" });
+    return finishAll({ kind: "unparseable" });
   }
   v.hcsRecord = hcsRecord;
   if (hcsRecord.contract_id !== String(escrowId)) {
     step("escrow", "fail", `anchored record is for escrow #${hcsRecord.contract_id}`);
-    return finish({ kind: "wrong_escrow", anchoredFor: String(hcsRecord.contract_id) });
+    return finishAll({ kind: "wrong_escrow", anchoredFor: String(hcsRecord.contract_id) });
   }
   step("escrow", "ok", undefined, `Anchored record belongs to escrow #${escrowId}`);
 
@@ -187,8 +215,10 @@ export async function verify(escrowId: number, onUpdate: (v: Verification) => vo
   step("dbHash", "ok", short(dbHash));
   step("hcsHash", "running");
   const hcsHash = bytesHash(got.bytes);
+  v.hcsHash = hcsHash;
   step("hcsHash", "ok", short(hcsHash));
+  step("oracle", "running");
 
   const diff = diffRecords(res.record, hcsRecord);
-  return finish(dbHash === hcsHash ? { kind: "match", dbHash, hcsHash, diff } : { kind: "mismatch", dbHash, hcsHash, diff });
+  return finishAll(dbHash === hcsHash ? { kind: "match", dbHash, hcsHash, diff } : { kind: "mismatch", dbHash, hcsHash, diff });
 }

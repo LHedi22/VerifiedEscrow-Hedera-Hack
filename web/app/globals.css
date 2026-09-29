@@ -371,3 +371,14 @@ details.card > summary { cursor: pointer; color: var(--text); }
 }
 .nowrap { white-space: nowrap; }
 .substep.ready { color: var(--green); font-weight: 600; }
+
+/* ---------------------------------------------------------------- oracle-consistency row (FR-25) */
+.consistency {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-weight: 700; font-size: 17px;
+  background: var(--surface-2); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+}
+.consistency .sep { color: var(--muted); font-weight: 400; }
+.ok-mark { color: var(--green); font-weight: 800; }
+.bad-mark { color: var(--red); font-weight: 800; }
+.oracle-checks { list-style: none; margin: 0 0 12px; padding: 0; font-size: 14px; }
+.oracle-checks li { padding: 2px 0; }

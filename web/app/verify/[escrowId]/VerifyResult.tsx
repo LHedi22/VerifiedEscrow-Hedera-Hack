@@ -6,7 +6,7 @@ import HashPill from "@/components/HashPill";
 import CopyButton from "@/components/CopyButton";
 import { CONTRACT_ADDRESS, TOPIC_ID } from "@/lib/deployment";
 import { consensusDate, consensusTime } from "@/lib/format";
-import { type Outcome, type Step, type Verification, initialSteps, verify } from "@/lib/verify";
+import { type OracleChecks, type Outcome, type Step, type Verification, initialSteps, verify } from "@/lib/verify";
 
 const ICON: Record<Step["state"], string> = { pending: "☐", running: "◌", ok: "☑", fail: "☒" };
 
@@ -177,11 +177,47 @@ function AnchoredRecord({ rec, dbContractId }: { rec: Record<string, string>; db
   );
 }
 
+const mark = (ok: boolean | undefined) => (ok === undefined ? <span className="muted">—</span> : ok ? <span className="ok-mark">✓</span> : <span className="bad-mark">✗</span>);
+
+/** "Escrow contract ✓ / HCS ✓ / App ✗" (App Flow §5.6, FR-25). */
+function ConsistencyRow({ v }: { v: Verification }) {
+  const o = v.outcome;
+  const app = o.kind === "match" ? true : o.kind === "mismatch" ? false : undefined;
+  const hcs = v.hcsHash ? true : ["mirror_unreachable", "incomplete", "unparseable", "wrong_escrow"].includes(o.kind) ? false : undefined;
+  const contract = v.oracle?.all;
+  return (
+    <div className="consistency" data-testid="consistency-row"
+         data-contract={String(contract)} data-hcs={String(hcs)} data-app={String(app)}>
+      <span>Escrow contract {mark(contract)}</span>
+      <span className="sep">/</span>
+      <span>HCS {mark(hcs)}</span>
+      <span className="sep">/</span>
+      <span>App {mark(app)}</span>
+    </div>
+  );
+}
+
+function OracleDetail({ c }: { c: OracleChecks }) {
+  const rows: [string, boolean][] = [
+    ["verdictHash = anchored record hash", c.hash],
+    ["verdictPassed = anchored verdict", c.verdict],
+    ["sowHash = hash of anchored SOW", c.sow],
+    ["escrow exists on-chain", c.exists],
+  ];
+  return (
+    <ul className="oracle-checks" data-testid="oracle-checks">
+      {rows.map(([label, ok]) => <li key={label} data-ok={ok}>{mark(ok)} {label}</li>)}
+    </ul>
+  );
+}
+
 function Evidence({ v, escrowId }: { v: Verification; escrowId: number }) {
   const chain = v.chain;
   return (
     <aside className="card evidence" data-testid="evidence">
       <p className="section-title">Evidence</p>
+      <ConsistencyRow v={v} />
+      {v.oracle && <OracleDetail c={v.oracle} />}
       <dl>
         <dt>Topic <span className="muted small">(built into this page)</span></dt>
         <dd><HashPill kind="topic" id={TOPIC_ID} /></dd>
