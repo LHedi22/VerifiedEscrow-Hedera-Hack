@@ -390,7 +390,7 @@ Toasts appear at the bottom-right and last 5 s.
 - seed data loaded (`demo/reset`) and every window refreshed
 - Ollama warmed, with `keep_alive` set
 - `/dev/selftest` green
-- balances checked (`demo/recycle` run after the last rehearsal)
+- balances checked (`pnpm --filter hedera-svc recycle` run after the last rehearsal)
 
 Three windows open:
 
@@ -400,14 +400,14 @@ Three windows open:
 
 Also open one HashScan tab on the topic.
 
-**Confirm the presentation slot length first** (PRD §13). This sheet takes 4:15 on its own.
+**Confirm the presentation slot length first** (PRD §13). This sheet takes 4:10 on its own.
 
 | # | Window | Action | Audience sees | Time |
 | --- | --- | --- | --- | --- |
 | 1 | W1 | Dashboard → **+ New contract** → "Use example SOW" (fills title, SOW, 5 ℏ) → Create draft | Contract in DRAFT | 0:30 |
-| 2 | W1 | **Fund escrow** → confirm, then click the funding tx pill ↗ and show the `createEscrow` call on HashScan. This is a natural ~30 s beat: the criteria are being extracted from the SOW meanwhile (TRD §8.1 fallback 1), so step 3's wait is the evaluation only | Balance drops; tx pill; HashScan shows the contract call | 0:30 |
+| 2 | W1 | **Fund escrow** → confirm, then click the funding tx pill ↗ and show the `createEscrow` call on HashScan. **Stay on HashScan until W2's stepper shows "✓ Criteria ready"** under Funded (TRD §8.1 fallback 1). With the "Use example SOW" template the criteria are copied from seeded S1 (TRD §8.2 cache), so this is usually immediate; otherwise it takes 30–60 s on the demo laptop | Balance drops; tx pill; HashScan shows the contract call | 0:30 |
 | 3 | W2 | Open contract → **Insert sample → good** (or paste) → Submit | Stepper starts | 0:15 |
-| 4 | W2 | Narrate while the stepper runs; click the "Anchored · msgs #N–M" link | HCS messages live on HashScan | 0:45 |
+| 4 | W2 | Narrate while the stepper runs (Evaluating 33–35 s measured on 29 Sep); click the "Anchored · msgs #N–M" link as soon as it appears | HCS messages live on HashScan | 0:40 |
 | 5 | W2 | Stepper reaches **Paid** | Green PASS card; freelancer balance +5 ℏ | 0:15 |
 | 6 | W1 | Open seeded **S2** ("Product FAQ for Olive & Co", HELD, FAIL) → **Verify this record** | Green MATCH banner (control case) | 0:30 |
 | 7 | W3 | `\i /demo/tamper.sql`, flipping `verdict` to `pass` and rewriting `reasoning`. Narrate: "same access a malicious operator has" | `UPDATE 1`, `UPDATE 1`, then the lied-about row | 0:20 |
@@ -419,7 +419,7 @@ Also open one HashScan tab on the topic.
 
 v1.0's line ("contracts can't read HCS by design") overstated HIP-478, which calls direct reads possible but rejected in favour of an oracle (TRD §15).
 
-The total is **4:15** (v1.0 said "about 4.5 minutes"; the rows add up to 4:15).
+The total is **4:10** (v1.0 said "about 4.5 minutes"; v1.1 said 4:15). Step 4 was set to the measured time on 29 Sep: submit → "Anchored" link took 35–39 s in three production-build runs, and step 5 (Anchored → Paid) took 11–14 s.
 
 **Fallbacks:**
 
@@ -427,7 +427,7 @@ The total is **4:15** (v1.0 said "about 4.5 minutes"; the rows add up to 4:15).
 - If Ollama fails, use the FR-29 replay (P1). Its record says `replay/…` in `model_version`, and the UI shows the chip.
 - If testnet is down, play the backup screen recording.
 
-After the demo, run `demo/reset` (a few seconds, FR-28) and `demo/recycle`, then refresh every window.
+After the demo, run `demo/reset` (a few seconds, FR-28) and `pnpm --filter hedera-svc recycle`, then refresh every window.
 
 ## 10. Responsive and accessibility notes
 
@@ -441,4 +441,5 @@ After the demo, run `demo/reset` (a few seconds, FR-28) and `demo/recycle`, then
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | Verification routes use the escrow ID. The verdict becomes visible at mirror confirmation (SUBMITTING_VERDICT row added); ERROR is shown as paused with Retry; EVALUATION_ERROR hold copy. MATCH banner reworded to claim only what is proven; anchored record shown from Hedera; new red states (wrong escrow, unexpected topic, multiple records); P1 oracle-consistency row. Criteria table labelled "not anchored in v1". Funding tx shown as EVM hash. Amounts 5 ℏ. "Use example SOW" fills title too; DEMO_MODE Insert-sample menu (P1); presence-based SOW helper text. Run sheet: total corrected to 4:15, tamper via `\i /demo/tamper.sql` inside the container, closing line corrected per HIP-478, reset + recycle + refresh after the demo. Two-profile wording fixed. |
+| 29 Sep (build) | §9: stay on HashScan until "✓ Criteria ready"; step 4 set to the measured 0:40 (total 4:10); recycle command named. |
 | 27 Sep (build) | §9: after funding, click the funding tx on HashScan (a natural ~30 s beat while criteria are extracted); stall fallback moved from 60 s to 90 s. |
