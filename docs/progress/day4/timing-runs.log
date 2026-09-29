@@ -1,0 +1,32 @@
+=== run 1
+[  15.3s] funded: 0x71b630…13ce90
+[  22.1s] submitted 6.8s after funding; stepper running
+[  22.1s] status EVALUATING  (evaluation visible: False)
+[  56.9s] status ANCHORING  (evaluation visible: False)
+[  59.9s] status CONFIRMING  (evaluation visible: False)
+[  63.0s] status SUBMITTING_VERDICT  (evaluation visible: True)
+[  74.8s] status RELEASED  (evaluation visible: True)
+[  74.8s] deliverable -> RELEASED: 52.7s
+[  74.8s] stepper: ✓ Funded Funded · escrow #19 ✓ Evaluating Evaluated · 34 s ✓ Anchoring Anchored · msgs #24–25 ↗ · 2 s ✓ Confirming Confirmed at 19:08:34.023 UTC · 5 s ✓ Verdict Verdict on-chain · 9 s ✓ Released Released
+{"contract_id": 4, "final": "RELEASED", "deliverable_to_terminal_s": 55.1}
+=== run 2
+[  14.1s] funded: 0xbdacf2…f776fb
+[  19.3s] submitted 5.2s after funding; stepper running
+[  19.3s] status EVALUATING  (evaluation visible: False)
+[  56.5s] status CONFIRMING  (evaluation visible: False)
+[  59.5s] status SUBMITTING_VERDICT  (evaluation visible: True)
+[  66.2s] status RELEASED  (evaluation visible: True)
+[  66.2s] deliverable -> RELEASED: 46.9s
+[  66.2s] stepper: ✓ Funded Funded · escrow #20 ✓ Evaluating Evaluated · 35 s ✓ Anchoring Anchored · msgs #26–27 ↗ · 4 s ✓ Confirming Confirmed at 19:09:49.659 UTC · 2 s ✓ Verdict Verdict on-chain · 7 s ✓ Released Released
+{"contract_id": 5, "final": "RELEASED", "deliverable_to_terminal_s": 48.7}
+=== run 3
+[  10.6s] funded: 0x4ce8c4…b84e93
+[  16.7s] submitted 6.2s after funding; stepper running
+[  16.8s] status EVALUATING  (evaluation visible: False)
+[  52.8s] status CONFIRMING  (evaluation visible: False)
+[  55.9s] status SUBMITTING_VERDICT  (evaluation visible: True)
+[  67.2s] status RELEASED  (evaluation visible: True)
+[  67.2s] deliverable -> RELEASED: 50.4s
+[  67.2s] stepper: ✓ Funded Funded · escrow #21 ✓ Evaluating Evaluated · 33 s ✓ Anchoring Anchored · msgs #28–29 ↗ · 0 s ✓ Confirming Confirmed at 19:10:54.260 UTC · 4 s ✓ Verdict Verdict on-chain · 10 s ✓ Released Released
+{"contract_id": 6, "final": "RELEASED", "deliverable_to_terminal_s": 53.1}
+done
