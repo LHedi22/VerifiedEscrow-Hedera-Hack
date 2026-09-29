@@ -343,9 +343,9 @@ v1.0's check `status IN ('DRAFT') OR escrow_id IS NOT NULL OR status = 'ERROR'` 
 
 #### `GET /health`
 ```json
-{ "db": "ok", "ollama": "ok", "hedera_svc": "ok", "mirror": "ok", "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48", "topic_id": "0.0.6001", "escrow_contract": "0x…", "forced_eval_error": false }
+{ "db": "ok", "ollama": "ok", "hedera_svc": "ok", "mirror": "ok", "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48", "topic_id": "0.0.6001", "escrow_contract": "0x…", "forced_eval_error": false, "replay_mode": false }
 ```
-`topic_id` and `escrow_contract` come from `shared/deployment.json`. `forced_eval_error` is `true` while `OLLAMA_EVAL_NUM_PREDICT` is set (the Day 2 forced evaluation-error mode, TRD §8.1); the footer turns red. They are shown in the footer. The verification page uses its own bundled copy, never these values.
+`topic_id` and `escrow_contract` come from `shared/deployment.json`. `replay_mode` is `true` under `DEMO_REPLAY=1` (TRD §8.3a). `forced_eval_error` is `true` while `OLLAMA_EVAL_NUM_PREDICT` is set (the Day 2 forced evaluation-error mode, TRD §8.1); the footer turns red. They are shown in the footer. The verification page uses its own bundled copy, never these values.
 
 #### `GET /personas`
 ```json

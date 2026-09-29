@@ -186,17 +186,26 @@ async def _run(contract_id: int) -> None:
 # ------------------------------------------------------------------ steps
 async def _evaluate(contract_id: int) -> None:
     """EVALUATING -> ANCHORING. Ollama unreachable/timeout -> ERROR (nothing anchored)."""
-    await _wait_for_criteria(contract_id)  # never a second extraction while the funding-time one runs
-    reuse_criteria(contract_id)  # funding-time task missing or failed: an identical SOW's criteria still count
     with SessionLocal() as s:
         c = s.get(Contract, contract_id)
-        sow = c.sow
+        sow, sow_hash = c.sow, c.sow_hash
         deliverable = s.scalar(select(Deliverable.content).where(Deliverable.contract_id == contract_id))
+    replayed = evaluator.replay(sow_hash, deliverable) if settings.demo_replay else None
+    if settings.demo_replay and replayed is None:
+        log.warning("DEMO_REPLAY=1 but no recording for contract %s; evaluating live", contract_id)
+    if replayed is None:
+        await _wait_for_criteria(contract_id)  # never a second extraction while the funding-time one runs
+        reuse_criteria(contract_id)  # funding-time task missing or failed: an identical SOW's criteria still count
+    with SessionLocal() as s:  # criteria may have landed while we waited
         ev = s.scalar(select(Evaluation).where(Evaluation.contract_id == contract_id))
         cached = ev.criteria if ev and ev.criteria else None
         prior_attempts = ev.attempts if ev else 0
 
-    outcome = await evaluator.evaluate(sow, deliverable, criteria=cached)  # raises EvaluatorUnavailable
+    if replayed is not None:
+        outcome = replayed  # FR-29: no Ollama; anchored and submitted exactly like a live verdict
+        log.info("contract %s: replayed verdict (%s)", contract_id, outcome.model_version)
+    else:
+        outcome = await evaluator.evaluate(sow, deliverable, criteria=cached)  # raises EvaluatorUnavailable
 
     # Hashing step: one transaction (TRD §9, Schema §7).
     with SessionLocal.begin() as s:

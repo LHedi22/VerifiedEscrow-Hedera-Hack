@@ -180,6 +180,7 @@ function AnchoredRecord({ rec, dbContractId }: { rec: Record<string, string>; db
       <div className="row" style={{ margin: "14px 0", gap: 16 }}>
         <span className={`verdict-tag ${pass ? "pass" : "fail"}`} data-testid="anchored-verdict">Verdict {pass ? "PASS" : "FAIL"}</span>
         <span className="muted">Model</span> <code>{rec.model_version}</code>
+        {rec.model_version?.startsWith("replay/") && <span className="chip" data-testid="replay-chip">Replayed verdict (demo fallback)</span>}
         <span className="muted">Timestamp</span> <code>{rec.timestamp}</code>
       </div>
       <h3>Reasoning</h3>

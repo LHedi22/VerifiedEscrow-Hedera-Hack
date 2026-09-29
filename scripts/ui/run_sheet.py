@@ -102,7 +102,7 @@ with sync_playwright() as p:
         w2.click("[data-testid=sample-good]")
         w2.click("[data-testid=submit]")
         w2.click("[data-testid=modal-confirm]")
-        w2.wait_for_selector("[data-testid=stepper][data-status=EVALUATING]", timeout=30000)
+        w2.wait_for_selector("[data-testid=stepper]:not([data-status=FUNDED])", timeout=30000)
         submitted = time.monotonic()
         print("   criteria sub-step:", w2.inner_text("[data-testid=criteria-substep]"))
 

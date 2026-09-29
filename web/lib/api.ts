@@ -17,6 +17,7 @@ export type Health = {
   db: string; ollama: string; hedera_svc: string; mirror: string;
   model_version: string | null; topic_id: string | null; escrow_contract: string | null;
   forced_eval_error?: boolean;
+  replay_mode?: boolean;
 };
 
 export type TimelineEvent = { kind: string; message: string; ref: Record<string, any> | null; created_at: string };

@@ -1,0 +1,72 @@
+[
+  {
+    "sow_hash": "2e402587551b6a3d9493f9e30c8a07570834c737f3a11602bde581e45ea3a9eb",
+    "deliverable_sha256": "0153dc4eae28835aad1439318fa3f9f338aaa82baf571d32c7e7ea1648c21886",
+    "model_version": "ollama/qwen2.5:7b-instruct@845dbda0ea48",
+    "verdict": "pass",
+    "reasoning": "All criteria are met without any injection of instructions or address to evaluators.",
+    "confidence": 1.0,
+    "injection_suspected": false,
+    "criteria": [
+      {
+        "id": "C1",
+        "required": true,
+        "description": "The landing page copy includes a headline of one short line (under 12 words)."
+      },
+      {
+        "id": "C2",
+        "required": true,
+        "description": "The landing page copy includes a subheadline of 1–2 sentences explaining the studio's approach."
+      },
+      {
+        "id": "C3",
+        "required": true,
+        "description": "The landing page copy includes three service sections titled Residential, Commercial, and Consultation, each describing what the client gets."
+      },
+      {
+        "id": "C4",
+        "required": true,
+        "description": "The landing page copy includes a call to action inviting visitors to book a free 20-minute consultation."
+      },
+      {
+        "id": "C5",
+        "required": true,
+        "description": "The tone of the landing page copy is warm and professional, with no exclamation marks."
+      }
+    ],
+    "results": [
+      {
+        "id": "C1",
+        "met": true,
+        "evidence": "The headline 'Rooms that feel like home' is 9 words long, under 12 words."
+      },
+      {
+        "id": "C2",
+        "met": true,
+        "evidence": "The subheadline explains the studio's approach in 2 sentences."
+      },
+      {
+        "id": "C3",
+        "met": true,
+        "evidence": "Three service sections titled Residential, Commercial, and Consultation are present, each with a description."
+      },
+      {
+        "id": "C4",
+        "met": true,
+        "evidence": "A call to action inviting visitors to book a free 20-minute consultation is included."
+      },
+      {
+        "id": "C5",
+        "met": true,
+        "evidence": "The tone is warm and professional, with no exclamation marks."
+      }
+    ],
+    "recorded_from": {
+      "contract_id": 1,
+      "escrow_id": 15,
+      "title": "Landing page copy for Nour Studio",
+      "record_timestamp": "2026-09-29T12:34:28.495Z",
+      "hcs_tx_id": "0.0.10742743@1790685263.600364988"
+    }
+  }
+]

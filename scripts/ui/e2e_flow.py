@@ -62,7 +62,8 @@ with sync_playwright() as p:
     freelancer.click(f"[data-testid=sample-{sample}]")
     freelancer.click("[data-testid=submit]")
     freelancer.click("[data-testid=modal-confirm]")
-    freelancer.wait_for_selector("[data-testid=stepper][data-status=EVALUATING]", timeout=30000)
+    # any post-submit state: a replayed verdict (FR-29) can leave EVALUATING within one poll
+    freelancer.wait_for_selector("[data-testid=stepper]:not([data-status=FUNDED])", timeout=30000)
     submitted_at = time.monotonic()
     log(f"submitted {funded_at and submitted_at - funded_at:.1f}s after funding; stepper running")
 

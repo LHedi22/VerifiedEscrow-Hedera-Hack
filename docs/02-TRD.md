@@ -544,6 +544,16 @@ reasoning = truncate(model.reasoning, 3000)                       # at a word bo
 - The regex is a heuristic backstop that makes the S3 demo case deterministic. It was tested in the review against all six `06-DEMO-CONTENT.md` deliverables (only S3 flagged) and against false-positive probes such as "Our AI: …", "The model, trained on…" and "AI Night: …".
 - The confidence threshold is part of P0 aggregation (FR-10). A 7B model's self-reported confidence is poorly calibrated, so treat it as a tiebreaker, not a signal the pitch leans on.
 
+### 8.3a Demo-mode replay (FR-29)
+
+- **Recording:** `demo/record_replay.py <contract id>` copies a real, mirror-confirmed evaluation (criteria, results, verdict, reasoning, confidence, injection flag, original `model_version`) into `api/app/replay/recordings.json`, keyed by `sow_hash` and the SHA-256 of the stored deliverable. The committed recording is seeded S1 (escrow #15), which is exactly the live on-stage contract: "Use example SOW" plus "Insert sample → good".
+- **Replay:** with `DEMO_REPLAY=1` (`scripts\start-all.ps1 -Only api -Replay`), the evaluation step looks up the recording and uses it **without calling Ollama**. `model_version` becomes `replay/<original>`, so **the anchored record itself says it was replayed**. The record timestamp is new, and the record is anchored live on HCS and submitted on-chain like any other.
+  - The deliverable endpoint skips its Ollama health check when a recording matches.
+  - The api skips its startup warm-up.
+  - `/health` reports `replay_mode: true`, and the footer shows an amber "REPLAY MODE" chip. The contract page and the verify page show "Replayed verdict (demo fallback)".
+  - With no matching recording, it evaluates live and logs a warning.
+- **Measured (29 Sep, escrow #22, model unloaded):** deliverable → Paid in 11.6 s (evaluation 0.06 s, anchoring 1.9 s, confirmation 2.1 s, verdict 7.5 s). `/verify/22`: MATCH, oracle checks 4/4.
+
 ### 8.4 Validation, retries and the evaluation-error path
 
 Parse with Pydantic. An attempt fails if:
@@ -845,5 +855,5 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | HIP-478 claim corrected (§15). `/verify` keyed by escrow ID; browser takes topic and contract from bundled `deployment.json`; checks `contract_id`. One topic per deployment. HCS: `executeAll` (v1.0's `execute()` returns only chunk 1), single-flight submits, bounded mirror query, reassembly rules. Contract: `verdictPassed`, distinct parties, non-zero hash, solc pinned; 8 tests written and passing. Oracle-consistency check promoted to P1 with 4 checks. EVALUATION_ERROR now anchored + submitted as a fail, so the arbitrator can resolve it (v1.0 left funds stuck). Row lock replaced by atomic claim; resume covers `EVALUATING`; `SUBMITTING_VERDICT` reconciles from chain; `ERROR` is resumable. Visibility gate unified on mirror confirmation. Normalization: explicit ASCII strip set, NUL rejected; timestamp generator; `model_version` format unified. `@noble/hashes` replaces `crypto.subtle`. Ollama `keep_alive`, `num_ctx`, semaphore, benchmark gate. Injection regex backstop. Criteria stored in `evaluations.criteria`. Keys/units/nonce/fee gotchas. Demo amount 5 ℏ; faucet and testnet-reset checks. `.env` one variable per line; `HCS_TOPIC_ID` moved to `deployment.json`. Windows/WSL notes. Trust model: re-anchoring attack, public-content limitation. |
-| 30 Sep (build) | §8.2: criteria cache by `sow_hash`. §17: measured 47–53 s; NFR-2 met; 40 s was a stretch target. |
+| 30 Sep (build) | §8.3a: demo-mode replay (FR-29). §8.2: criteria cache by `sow_hash`. §17: measured 47–53 s; NFR-2 met; 40 s was a stretch target. |
 | 27 Sep (build) | §8.1: fallback 1 active, measured timings, single criteria extraction per contract, `forced_eval_error`. §8.2: criteria run at funding. §7.3: Hashio relay fixes (no batching, explicit `gasPrice`, `staticCall` preflight, pinned-nonce retries). |

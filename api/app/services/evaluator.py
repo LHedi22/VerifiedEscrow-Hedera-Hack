@@ -9,6 +9,7 @@ error (EvaluatorUnavailable): nothing is produced, the caller moves to ERROR.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import re
 from dataclasses import dataclass, field
@@ -21,6 +22,7 @@ from app.config import settings
 from app.services.canonical import InvalidText, normalize
 
 PROMPTS = Path(__file__).resolve().parent.parent / "prompts"
+RECORDINGS = Path(__file__).resolve().parent.parent / "replay" / "recordings.json"
 CRITERIA_SYSTEM = (PROMPTS / "criteria_system.txt").read_text(encoding="utf-8")
 EVALUATION_SYSTEM = (PROMPTS / "evaluation_system.txt").read_text(encoding="utf-8")
 
@@ -273,6 +275,29 @@ async def evaluate(sow: str, deliverable: str, criteria: list[dict] | None = Non
             failures=failures,
         )
     return _evaluation_error(criteria, version, MAX_ATTEMPTS, raw_last, failures)
+
+
+def replay(sow_hash: str, deliverable: str) -> Outcome | None:
+    """FR-29 demo fallback: a verdict recorded from a real run (demo/record_replay.py) for this exact SOW and
+    deliverable. No Ollama call at all. model_version becomes "replay/<original>", so the anchored record itself
+    says it was replayed. The caller still anchors it live on HCS and submits it on-chain."""
+    if not RECORDINGS.exists():
+        return None
+    key = (sow_hash, hashlib.sha256(deliverable.encode("utf-8")).hexdigest())
+    for r in json.loads(RECORDINGS.read_text(encoding="utf-8")):
+        if (r["sow_hash"], r["deliverable_sha256"]) == key:
+            return Outcome(
+                criteria=r["criteria"],
+                verdict=r["verdict"],
+                reasoning=r["reasoning"],
+                model_version="replay/" + r["model_version"],
+                results=r["results"],
+                confidence=r["confidence"],
+                injection_suspected=r["injection_suspected"],
+                attempts=0,
+                raw_output={"replayed_from": r["recorded_from"]},
+            )
+    return None
 
 
 def _evaluation_error(criteria, version, attempts, raw, failures) -> Outcome:

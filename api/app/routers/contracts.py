@@ -15,7 +15,7 @@ from app.errors import ApiError
 from app.models import ChainTx, Contract, Deliverable, Evaluation, HcsAnchor, Persona
 from app.schemas import (CreateContract, Dispute, Resolve, SubmitDeliverable, contract_out, persona_header,
                          persona_row, require_persona, summary_out, to_hbar, to_tinybars)
-from app.services import hedera_client, pipeline
+from app.services import evaluator, hedera_client, pipeline
 from app.services.canonical import InvalidText, canonical_bytes, normalize, record_timestamp
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -113,17 +113,19 @@ async def submit_deliverable(contract_id: int, body: SubmitDeliverable, persona:
     with SessionLocal() as s:
         c = _get(s, contract_id)
         _expect(c, "FUNDED")
-        sow, escrow_id = c.sow, c.escrow_id
+        sow, escrow_id, sow_hash = c.sow, c.escrow_id, c.sow_hash
     # Size pre-check on the real canonical serialization, with a 3,000-char reasoning placeholder.
     probe = {"contract_id": str(escrow_id), "deliverable": content, "model_version": "ollama/" + settings.ollama_model + "@" + "0" * 12,
              "reasoning": "x" * 3000, "schema": "vte-record/1", "sow": sow, "timestamp": record_timestamp(), "verdict": "fail"}
     if len(canonical_bytes(probe)) > 18_000:
         raise ApiError(422, "RECORD_TOO_LARGE", "the anchored record would exceed 18,000 bytes; shorten the deliverable")
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            (await client.get(f"{settings.ollama_url}/api/tags")).raise_for_status()
-    except httpx.HTTPError as e:
-        raise ApiError(503, "EVALUATOR_OFFLINE", "the evaluator (Ollama) is offline") from e
+    replayable = settings.demo_replay and evaluator.replay(sow_hash, content) is not None  # FR-29: Ollama not needed
+    if not replayable:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                (await client.get(f"{settings.ollama_url}/api/tags")).raise_for_status()
+        except httpx.HTTPError as e:
+            raise ApiError(503, "EVALUATOR_OFFLINE", "the evaluator (Ollama) is offline") from e
     # Atomic claim: one short transaction, no row lock across calls (TRD §9).
     try:
         with SessionLocal.begin() as s:

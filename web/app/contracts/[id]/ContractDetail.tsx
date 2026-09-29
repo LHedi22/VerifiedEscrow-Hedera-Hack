@@ -177,7 +177,8 @@ export default function ContractDetail({ id }: { id: number }) {
   }
 
   const len = codePoints(content);
-  const evaluatorOffline = health ? health.ollama !== "ok" : false;
+  // In replay mode (FR-29) the submit works without Ollama; the api rejects it only if no recording matches.
+  const evaluatorOffline = health ? health.ollama !== "ok" && !health.replay_mode : false;
   const evAvail = ev?.available ? ev : undefined;
   const showEvaluation = !!evAvail && (c.status !== "ERROR" || confirmed);
   const isMine = (role: string) => persona === role;

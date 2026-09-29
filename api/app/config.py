@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     mirror_url: str = "https://testnet.mirrornode.hedera.com"
     deployment_file: str = "../shared/deployment.json"
     demo_mode: bool = False
+    demo_replay: bool = False  # FR-29: DEMO_REPLAY=1 replays recorded verdicts (app/replay/recordings.json), no Ollama
 
     @property
     def deployment_path(self) -> Path:

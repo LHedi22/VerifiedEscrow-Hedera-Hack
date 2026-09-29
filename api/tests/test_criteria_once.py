@@ -196,3 +196,70 @@ def test_identical_sow_reuses_stored_criteria_without_ollama(test_db, monkeypatc
     reused = [e for e in second["timeline"] if e["kind"] == "criteria_reused"]
     assert reused and reused[0]["message"] == "Criteria reused from an identical SOW (escrow #515151)", second["timeline"]
     assert not [e for e in first["timeline"] if e["kind"] == "criteria_reused"]
+
+
+def test_demo_replay_skips_ollama_and_marks_model_version(test_db, monkeypatch):
+    """FR-29: with DEMO_REPLAY=1 and Ollama fully offline, S1's recorded verdict is used; model_version says replay/."""
+    import json as _json
+    from pathlib import Path as _Path
+
+    import httpx
+    from app.config import settings
+    from app.main import app
+    from app.routers import personas
+    import app.routers.contracts as contracts_router
+    from app.services import evaluator, hedera_client, pipeline
+
+    s1 = next(s for s in _json.loads((_Path(__file__).resolve().parents[2] / "demo" / "seed_content.json")
+                                     .read_text(encoding="utf-8"))["seeds"] if s["id"] == "S1")
+    calls = {"ollama": 0}
+
+    async def offline_chat(*_a, **_k):
+        calls["ollama"] += 1
+        raise evaluator.EvaluatorUnavailable("Ollama: ConnectError (test)")
+
+    class OfflineClient:  # every httpx call to Ollama from the deliverable endpoint fails
+        def __init__(self, *a, **k): ...
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url):
+            calls["ollama"] += 1
+            raise httpx.ConnectError("offline (test)")
+
+    async def fake_escrow_create(amount, fr, ar, sow_hash):
+        return hedera_client.ChainTx(tx_hash="0x" + "ef" * 32, events=[]), 626262
+
+    async def noop(*_a, **_k):
+        return None
+
+    async def stop_at_anchoring(contract_id):
+        raise pipeline.StepError("test stops before anchoring")
+
+    monkeypatch.setattr(settings, "demo_replay", True)
+    monkeypatch.setattr(evaluator, "_chat", offline_chat)
+    monkeypatch.setattr(evaluator, "warm_up", noop)
+    monkeypatch.setattr(personas, "sync_personas", noop)
+    monkeypatch.setattr(hedera_client, "escrow_create", fake_escrow_create)
+    monkeypatch.setattr(pipeline, "_anchor", stop_at_anchoring)
+    monkeypatch.setattr(contracts_router.httpx, "AsyncClient", OfflineClient)
+
+    with TestClient(app) as client:
+        assert client.get("/health").json()["replay_mode"] is True
+        cid = client.post("/contracts", headers={"X-Persona": "client"},
+                          json={"title": s1["title"], "sow": s1["sow"], "amount_hbar": "5"}).json()["id"]
+        assert client.post(f"/contracts/{cid}/fund", headers={"X-Persona": "client"}).status_code == 200
+        r = client.post(f"/contracts/{cid}/deliverable", headers={"X-Persona": "freelancer"}, json={"content": s1["deliverable"]})
+        assert r.status_code == 202, r.text  # no EVALUATOR_OFFLINE: the replay doesn't need Ollama
+        deadline = time.monotonic() + 10
+        while client.get(f"/contracts/{cid}").json()["status"] == "EVALUATING" and time.monotonic() < deadline:
+            time.sleep(0.1)
+        body = client.get(f"/contracts/{cid}").json()
+    assert body["status"] == "ERROR" and body["error"]["step"] == "ANCHORING", body  # evaluation step done
+    from app.db import SessionLocal
+    from app.models import Evaluation
+    from sqlalchemy import select
+    with SessionLocal() as s:
+        ev = s.scalar(select(Evaluation).where(Evaluation.contract_id == cid))
+    assert ev.model_version.startswith("replay/ollama/qwen2.5:7b-instruct@"), ev.model_version
+    assert ev.verdict == "pass" and ev.record_hash
+    print(f"\nreplay: {ev.model_version}; failed Ollama attempts outside the evaluation step (health, criteria at funding): {calls}")

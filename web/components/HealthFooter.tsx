@@ -12,6 +12,7 @@ export default function HealthFooter() {
   const { data, error } = useSWR<Health>("/health", publicFetcher, { refreshInterval: 10_000, isPaused: () => false });
   const down = data ? DEPS.filter(([k]) => data[k] !== "ok").map(([, l]) => l) : [];
   const forced = !!data?.forced_eval_error;
+  const replay = !!data?.replay_mode;
   const state = error ? "bad" : forced ? "bad" : down.length ? (down.length > 1 || down.includes("db") ? "bad" : "warn") : "";
 
   return (
@@ -22,6 +23,7 @@ export default function HealthFooter() {
         <span className="row" style={{ gap: 6 }}>contract <HashPill kind="contract" id={data?.escrow_contract} /></span>
         <span className="spacer" />
         {forced && <span className="forced" data-testid="forced-eval-error">⚠ FORCED EVALUATION ERROR (OLLAMA_EVAL_NUM_PREDICT set)</span>}
+        {replay && <span className="chip amber" data-testid="replay-mode">REPLAY MODE (DEMO_REPLAY=1): recorded verdicts, no Ollama</span>}
         {error ? (
           <span className="dep"><span className="dot down" /> api unreachable</span>
         ) : (

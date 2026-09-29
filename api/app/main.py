@@ -28,7 +28,9 @@ async def lifespan(_app: FastAPI):
     resumed = pipeline.resume_all()  # TRD §9: resume EVALUATING/ANCHORING/CONFIRMING/SUBMITTING_VERDICT
     if resumed:
         log.info("resumed pipelines: %s", resumed)
-    if settings.ollama_warm_up:
+    if settings.demo_replay:
+        log.warning("DEMO_REPLAY=1: recorded verdicts are replayed (FR-29); no warm-up")
+    elif settings.ollama_warm_up:
         asyncio.create_task(_warm_up())
     else:
         log.info("evaluator warm-up skipped (OLLAMA_WARM_UP=0)")
@@ -88,4 +90,5 @@ async def health():
         "model_version": model_version, "topic_id": dep.get("topicId"), "escrow_contract": dep.get("contractAddress"),
         # OLLAMA_EVAL_NUM_PREDICT set (env or api/.env) = the Day 2 forced evaluation-error mode. Must be false on stage.
         "forced_eval_error": "ollama_eval_num_predict" in settings.model_fields_set,
+        "replay_mode": settings.demo_replay,  # FR-29: DEMO_REPLAY=1
     }
