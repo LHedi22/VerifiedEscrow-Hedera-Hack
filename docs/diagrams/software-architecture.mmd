@@ -1,0 +1,82 @@
+flowchart LR
+    subgraph BROWSER["Browser"]
+      direction TB
+      subgraph WEB["web · Next.js 14 :3000"]
+        direction TB
+        WR["Pages<br/>/ dashboard · /contracts/new<br/>/contracts/[id] · /arbitration<br/>/verify · /verify/[escrowId]<br/>/dev/selftest"]
+        WC["Components<br/>Stepper · Timeline · OnChainPanel<br/>EvaluationSection · HashPill · Toasts<br/>Header (persona switcher) · HealthFooter"]
+        WL["lib<br/>api.ts (SWR, 1.5 s polling, X-Persona)<br/>verify.ts (hash · oracle check · topic scan)<br/>deployment.ts · persona.ts · format.ts"]
+        WR --> WC --> WL
+      end
+    end
+
+    subgraph SHARED["Shared, bundled at build time"]
+      direction TB
+      PC["packages/canonical<br/>canonicalString · recordHash<br/>(@noble/hashes sha2.js)<br/>HCS reassembly · hashscanUrl<br/>+ 6 cross-language fixtures"]
+      DJ[["shared/deployment.json<br/>contract address · ABI · topicId"]]
+    end
+
+    subgraph LAPTOP["Operator laptop (native Windows)"]
+      direction TB
+      subgraph API["api · FastAPI :8000"]
+        direction TB
+        AR["Routers<br/>contracts · personas · verify · /health"]
+        AP["pipeline.py<br/>state machine · atomic claim<br/>resume on startup · retry"]
+        AE["evaluator.py<br/>criteria · evaluation · aggregation<br/>injection regex · replay"]
+        ACN["canonical.py<br/>normalize · canonical_bytes · record_hash"]
+        AM["mirror.py<br/>poll + reassemble + hash-confirm"]
+        AH["hedera_client.py<br/>typed client for hedera-svc"]
+        AR --> AP
+        AP --> AE
+        AP --> ACN
+        AP --> AM
+        AP --> AH
+      end
+      subgraph HS["hedera-svc · Express 127.0.0.1:7000<br/>X-Internal-Token · keys only here"]
+        direction TB
+        HI["index.ts routes<br/>/hcs/submit · /escrow/create|verdict|resolve<br/>/escrow/:id · /accounts"]
+        HQ["hcs.ts + queue.ts<br/>executeAll · single-flight queue"]
+        HE["escrow.ts<br/>ethers v6 · per-signer mutex<br/>gasLimit 400k · staticCall preflight<br/>pinned-nonce retries"]
+        HA["accounts.ts<br/>oracle · client · freelancer · arbitrator"]
+        HI --> HQ
+        HI --> HE
+        HI --> HA
+      end
+      DB[("Postgres 16 · Docker :5432<br/>personas · contracts · deliverables<br/>evaluations · hcs_anchors · chain_txs<br/>timeline_events · v_canonical_record")]
+      OL[["Ollama :11434 (native)<br/>qwen2.5:7b-instruct"]]
+      DEMO["demo/ + scripts/<br/>seed.py · reset.ps1 · tamper.sql<br/>record_replay.py · recycle<br/>start-all.ps1 · stop-all.ps1"]
+    end
+
+    subgraph HEDERA["Hedera testnet"]
+      direction TB
+      TOPIC[("HCS topic 0.0.10748103<br/>submit key = oracle · no admin key")]
+      RELAY["Hashio JSON-RPC relay<br/>chainId 296"]
+      SC["VerifiedEscrow.sol<br/>solc 0.8.24 · createEscrow<br/>submitVerdict · resolveDispute"]
+      MIRROR[("Mirror node REST<br/>topics/messages · contracts/call")]
+      RELAY --> SC
+      TOPIC --> MIRROR
+      SC --> MIRROR
+    end
+
+    WL -->|REST + X-Persona| AR
+    WL -.->|verification reads, direct| MIRROR
+    WL --- PC
+    WL --- DJ
+    AP --> DB
+    AE -->|/api/chat, JSON schema| OL
+    AH -->|REST + shared token| HI
+    AM -->|confirm reads| MIRROR
+    HQ -->|TopicMessageSubmitTransaction · SDK| TOPIC
+    HE -->|signed txs| RELAY
+    DJ -.-> API
+    DJ -.-> HS
+    DEMO -.-> DB
+    DEMO -.-> AR
+
+    CT["contracts/ · Hardhat<br/>deploy.ts writes deployment.json<br/>8 tests"] -.->|deploy| SC
+    CT -.-> DJ
+
+    classDef hedera fill:#EEF3F8,stroke:#1F3A5F,color:#1F3A5F
+    classDef store fill:#FFF7E6,stroke:#B7791F,color:#5C3D0E
+    class TOPIC,RELAY,SC,MIRROR hedera
+    class DB,DJ store

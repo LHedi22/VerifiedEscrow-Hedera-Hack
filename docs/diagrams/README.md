@@ -21,6 +21,8 @@ The docs' own Mermaid blocks are the source of truth for the `readme-`, `trd-`, 
 | `pitch-tamper-detection` | Demo / trust slide: DB edit caught by hash + oracle-consistency checks | TRD §11 (verify algorithm), §15 |
 | `pitch-trust-model` | Trust model / limitations slide: proven, mitigated, not proven | TRD §15 |
 | `pitch-escrow-lifecycle` | On-chain `VerifiedEscrow` status lifecycle | TRD §7.1 |
+| `ai-pipeline` | AI evaluation pipeline: criteria at funding (with `sow_hash` cache), evaluation, validation and retries, injection backstop, code aggregation, EVALUATION_ERROR / replay paths, then record → HCS → mirror → `submitVerdict` | TRD §8, §9; `api/app/services/evaluator.py`, `pipeline.py` |
+| `software-architecture` | Full software architecture: every module of `web`, `api`, `hedera-svc`, the shared packages, Postgres, Ollama, demo tooling and the Hedera services | TRD §2, §10, §13; the repo |
 
 ## Re-render
 
