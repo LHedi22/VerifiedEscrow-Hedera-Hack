@@ -3,9 +3,11 @@
 #
 #   scripts\start-all.ps1          production web build (next build && next start) - rehearsals, T3.8, stage
 #   scripts\start-all.ps1 -Dev     next dev + uvicorn --reload - while building the UI
+#   scripts\start-all.ps1 -Only web            (re)start one service: hedera-svc | api | web
+#   scripts\start-all.ps1 -Only api -Replay    api with DEMO_REPLAY=1 (FR-29 replay fallback, App Flow 9)
 #
-# Close a service by closing its window. Re-running the script opens new windows; close the old ones first.
-param([switch]$Dev)
+# Stop services with scripts\stop-all.ps1 [-Only <service>], or by closing their windows.
+param([switch]$Dev, [ValidateSet("", "hedera-svc", "api", "web")][string]$Only = "", [switch]$Replay)
 
 $ErrorActionPreference = "Stop"
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -35,7 +37,9 @@ function Start-Window($title, $dir, $command) {
     Write-Host "$title`: started in its own window" -ForegroundColor Green
 }
 
-Start-Window "hedera-svc" $root "pnpm --filter hedera-svc dev"
+function Want($svc) { return ($Only -eq "") -or ($Only -eq $svc) }
+
+if (Want "hedera-svc") { Start-Window "hedera-svc" $root "pnpm --filter hedera-svc dev" }
 
 $apiDir = Join-Path $root "api"
 $reload = ""
@@ -43,10 +47,16 @@ if ($Dev) { $reload = " --reload" }
 # -Dev: no warm-up prompt, so the 7B model stays unloaded while building UI (15 GB RAM laptop).
 $warm = ""
 if ($Dev) { $warm = "`$env:OLLAMA_WARM_UP = '0'; " }
-Start-Window "api" $apiDir "$warm.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000$reload"
+$replayEnv = ""
+if ($Replay) { $replayEnv = "`$env:DEMO_REPLAY = '1'; "; Write-Host "api: DEMO_REPLAY=1 (replay fallback, no Ollama)" -ForegroundColor Yellow }
+$apiTitle = "api"
+if ($Replay) { $apiTitle = "api (replay)" }
+if (Want "api") { Start-Window $apiTitle $apiDir "$warm$replayEnv.\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000$reload" }
 
-if ($Dev) { Start-Window "web (dev)" $root "pnpm --filter web dev" }
-else { Start-Window "web (stage build)" $root "pnpm --filter web stage" }
+if (Want "web") {
+    if ($Dev) { Start-Window "web (dev)" $root "pnpm --filter web dev" }
+    else { Start-Window "web (stage build)" $root "pnpm --filter web stage" }
+}
 
 Write-Host ""
 Write-Host "Wait for 'Uvicorn running', 'hedera-svc listening' and 'Ready', then open http://localhost:3000" -ForegroundColor Cyan
