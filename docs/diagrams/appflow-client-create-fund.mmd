@@ -1,0 +1,16 @@
+sequenceDiagram
+    actor Client
+    participant Web
+    participant API
+    participant Chain as Hedera
+    Client->>Web: Dashboard → "+ New contract"
+    Client->>Web: Fill title, SOW, amount, freelancer, arbitrator
+    Web->>API: POST /contracts
+    API-->>Web: contract (DRAFT)
+    Web->>Client: Redirect to /contracts/:id — "Fund escrow" CTA
+    Client->>Web: Click "Fund escrow" → confirm modal
+    Web->>API: POST /contracts/:id/fund
+    API->>Chain: createEscrow (payable)
+    Chain-->>API: tx + escrowId
+    API-->>Web: FUNDED (or 502 → stays DRAFT, error in modal)
+    Web->>Client: Status FUNDED, tx pill ↗ HashScan, balance drops in header

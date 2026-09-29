@@ -1,0 +1,9 @@
+stateDiagram-v2
+    direction LR
+    [*] --> Funded: createEscrow(freelancer, arbitrator, sowHash)<br/>client locks HBAR
+    Funded --> Released: submitVerdict(pass, hash)<br/>oracle only · pays freelancer
+    Funded --> Held: submitVerdict(fail, hash)<br/>oracle only
+    Held --> Released: resolveDispute(true)<br/>arbitrator · pays freelancer
+    Held --> Refunded: resolveDispute(false)<br/>arbitrator · refunds client
+    Released --> [*]
+    Refunded --> [*]

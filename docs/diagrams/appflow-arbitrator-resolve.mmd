@@ -1,0 +1,8 @@
+flowchart LR
+    Q[Arbitration queue] --> C[Contract detail<br/>HELD]
+    C --> V[Verify record]
+    V -->|MATCH| C2[Back to detail]
+    V -->|MISMATCH| C2
+    C2 --> R{Decision}
+    R -->|Release to freelancer| RL[resolveDispute true → RELEASED]
+    R -->|Refund client| RF[resolveDispute false → REFUNDED]

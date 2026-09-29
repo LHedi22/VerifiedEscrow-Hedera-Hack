@@ -1,0 +1,17 @@
+sequenceDiagram
+    actor Freelancer
+    participant Web
+    participant API
+    participant LLM as Ollama
+    participant Chain as Hedera
+    Freelancer->>Web: Dashboard → open FUNDED contract
+    Freelancer->>Web: Paste deliverable → "Submit for evaluation"
+    Web->>API: POST /contracts/:id/deliverable
+    API-->>Web: 202 EVALUATING
+    loop every 1.5 s
+      Web->>API: GET /contracts/:id
+    end
+    API->>LLM: criteria + evaluation
+    API->>Chain: HCS submit → mirror confirm (verdict now visible) → submitVerdict
+    API-->>Web: RELEASED or HELD
+    Web->>Freelancer: Verdict card + reasoning + tx links

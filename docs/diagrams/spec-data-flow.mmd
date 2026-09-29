@@ -1,0 +1,17 @@
+flowchart TD
+    A[Client submits SOW + amount + freelancer account] --> B[Backend locks HBAR in escrow contract]
+    B --> C[Freelancer submits deliverable]
+    C --> D[Agent generates acceptance criteria from SOW]
+    D --> E[Agent evaluates deliverable, hardened prompt]
+    E --> F[Backend builds canonical record, sec 7]
+    F --> G[Backend submits record to HCS topic]
+    G --> H[Backend confirms via mirror node]
+    H --> I{Verdict}
+    I -->|Pass| J[submitVerdict true, HTS release]
+    I -->|Fail| K[submitVerdict false, held for review]
+    K --> L[resolveDispute by arbitrator]
+    L -->|release| J
+    L -->|refund| M[HBAR returned to client]
+    J --> N[Frontend displays status]
+    K --> N
+    N --> O[Anyone verifies via verification page, sec 10]

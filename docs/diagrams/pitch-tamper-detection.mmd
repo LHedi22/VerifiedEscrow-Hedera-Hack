@@ -1,0 +1,20 @@
+flowchart TB
+    X["Attacker edits the DB<br/>tamper.sql: verdict / reasoning"] --> DB[("Postgres<br/>app copy")]
+    DB -->|"GET /verify/:escrowId"| B1["Browser: recordHash(dbRecord)<br/>= dbHash"]
+    T[("HCS topic")] -->|"mirror node chunks,<br/>bundled topic ID"| B2["Browser: reassemble<br/>= hcsHash + hcsRecord"]
+    C["VerifiedEscrow.sol"] -->|"mirror contracts/call<br/>escrows(id)"| B3["On-chain<br/>verdictHash · verdictPassed · sowHash"]
+    B1 --> CMP{"dbHash == hcsHash?"}
+    B2 --> CMP
+    B2 --> OC{"hcsHash == verdictHash?<br/>verdict + SOW agree?"}
+    B3 --> OC
+    CMP -->|yes| G["MATCH"]
+    CMP -->|no| RED["MISMATCH<br/>field-by-field diff"]
+    OC -->|yes| G2["Escrow contract ✓ · HCS ✓"]
+    OC -->|no| RED2["Oracle inconsistent"]
+
+    classDef bad fill:#fce8e6,stroke:#c5221f,color:#5c0f0e
+    classDef good fill:#e6f4ea,stroke:#188038,color:#0d3b1e
+    classDef hedera fill:#e8f0fe,stroke:#3367d6,color:#0b2a66
+    class X,RED,RED2 bad
+    class G,G2 good
+    class T,C hedera

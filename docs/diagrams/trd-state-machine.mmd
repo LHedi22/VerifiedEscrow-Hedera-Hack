@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> DRAFT
+    DRAFT --> FUNDED: createEscrow tx ok (sync, on failure stay DRAFT + 502)
+    FUNDED --> EVALUATING: deliverable submitted (atomic claim)
+    EVALUATING --> ANCHORING: record built (verdict, or EVALUATION_ERROR fail record)
+    EVALUATING --> ERROR: evaluator unreachable / timeout
+    ANCHORING --> CONFIRMING: all HCS receipts
+    CONFIRMING --> SUBMITTING_VERDICT: mirror node hash match
+    SUBMITTING_VERDICT --> RELEASED: passed
+    SUBMITTING_VERDICT --> HELD: failed
+    HELD --> RELEASED: arbitrator release
+    HELD --> REFUNDED: arbitrator refund
+    ANCHORING --> ERROR: retries exhausted
+    CONFIRMING --> ERROR: no match after 120 s
+    SUBMITTING_VERDICT --> ERROR: revert / relay error
+    ERROR --> EVALUATING: retry (error_step = EVALUATING)
+    ERROR --> ANCHORING: retry
+    ERROR --> CONFIRMING: retry
+    ERROR --> SUBMITTING_VERDICT: retry

@@ -1,0 +1,32 @@
+%%{init: {"flowchart": {"rankSpacing": 25, "nodeSpacing": 30}}}%%
+flowchart TB
+    subgraph N["❌ Not proven: stated limits"]
+      direction TB
+      N1["Model / prompt manipulated<br/>before anchoring<br/>(re-runnable, not a proof)"]
+      N2["Confidential content<br/>(record is public + permanent)"]
+      N3["Demo-grade keys<br/>(.env, localhost sidecar)"]
+      N4["Criteria table<br/>not anchored in v1"]
+    end
+    subgraph M["◐ Mitigated"]
+      direction TB
+      M1["Prompt injection<br/>→ delimiting, schema, code-side<br/>aggregation, regex backstop"]
+      M2["API serves different data<br/>→ /verify shows Hedera's copy"]
+    end
+    subgraph P["✅ Proven: anyone can check"]
+      direction TB
+      P1["DB verdict / reasoning edited<br/>→ hash mismatch + diff"]
+      P2["DB record deleted<br/>→ topic scan still finds it"]
+      P3["Fake record posted to topic<br/>→ submit key = oracle only"]
+      P4["Second doctored record anchored<br/>→ ≠ on-chain verdictHash"]
+      P5["On-chain verdict ≠ HCS<br/>→ oracle-consistency check"]
+      P6["Record replayed on another escrow<br/>→ contract_id + sowHash"]
+    end
+
+    P1 ~~~ P2 ~~~ P3 ~~~ P4 ~~~ P5 ~~~ P6
+    M1 ~~~ M2
+    N1 ~~~ N2 ~~~ N3 ~~~ N4
+    classDef item fill:#ffffff,stroke:#5f6368,color:#202124
+    class P1,P2,P3,P4,P5,P6,M1,M2,N1,N2,N3,N4 item
+    style P fill:#e6f4ea,stroke:#188038
+    style M fill:#fff4e5,stroke:#e8710a
+    style N fill:#fce8e6,stroke:#c5221f

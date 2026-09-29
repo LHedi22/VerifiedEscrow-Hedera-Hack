@@ -1,0 +1,67 @@
+erDiagram
+    personas ||--o{ contracts : "client / freelancer / arbitrator"
+    contracts ||--o| deliverables : has
+    contracts ||--o| evaluations : has
+    contracts ||--o| hcs_anchors : has
+    contracts ||--o{ chain_txs : has
+    contracts ||--o{ timeline_events : has
+
+    personas {
+      smallint id PK
+      persona_role role UK
+      text display_name
+      text account_id
+      text evm_address
+    }
+    contracts {
+      bigint id PK
+      text title
+      text sow
+      char64 sow_hash
+      bigint amount_tinybars
+      smallint client_id FK
+      smallint freelancer_id FK
+      smallint arbitrator_id FK
+      contract_status status
+      hold_reason hold_reason
+      bigint escrow_id UK
+      boolean disputed
+    }
+    deliverables {
+      bigint id PK
+      bigint contract_id FK
+      text content
+    }
+    evaluations {
+      bigint id PK
+      bigint contract_id FK
+      jsonb criteria
+      jsonb results
+      text verdict
+      text reasoning
+      text model_version
+      text record_timestamp
+      char64 record_hash
+    }
+    hcs_anchors {
+      bigint id PK
+      bigint contract_id FK
+      text topic_id
+      bigint sequence_first
+      bigint sequence_last
+      text consensus_timestamp
+      timestamptz confirmed_at
+    }
+    chain_txs {
+      bigint id PK
+      bigint contract_id FK
+      tx_kind kind
+      text tx_hash
+    }
+    timeline_events {
+      bigint id PK
+      bigint contract_id FK
+      text kind
+      text message
+      jsonb ref
+    }

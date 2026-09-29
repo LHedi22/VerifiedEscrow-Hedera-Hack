@@ -1,0 +1,20 @@
+flowchart LR
+    A0[Day 0: accounts, faucet, speed gate] --> A1[Canonical lib + fixtures]
+    A1 --> A2[4-leg self-test]
+    A0 --> A3[Dev topic + hedera-svc /hcs/submit]
+    A2 --> A5[api: record build + HCS + mirror confirm]
+    A3 --> A5
+    A0 --> A4[Evaluator: criteria + eval + aggregation]
+    A4 --> A5
+    A0 --> B1[WhoAmI spike + fee measurement]
+    B1 --> B2[VerifiedEscrow + tests + deploy + demo topic]
+    B2 --> B3[hedera-svc /escrow/*]
+    A5 --> B4[Pipeline state machine end to end]
+    B3 --> B4
+    B4 --> C2[Contract detail + stepper]
+    A2 --> C3[Verification page]
+    B4 --> C3
+    C2 --> D1[Seeds + snapshot + tamper]
+    C3 --> D1
+    D1 --> D3[Oracle-consistency check]
+    D3 --> D2[Rehearsals]

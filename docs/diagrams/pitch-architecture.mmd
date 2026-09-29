@@ -1,0 +1,29 @@
+flowchart LR
+    subgraph OFF["Off-chain · one laptop"]
+      direction TB
+      W["Web app<br/>Next.js"]
+      A["API<br/>FastAPI · orchestrator"]
+      O["Local AI judge<br/>Ollama · qwen2.5 7B"]
+      D[("Postgres<br/>app copy")]
+      S["hedera-svc<br/>signs Hedera txs"]
+      W --> A
+      A --> O
+      A --> D
+      A --> S
+    end
+    subgraph HED["Hedera testnet"]
+      direction TB
+      T[("HCS topic<br/>anchored records")]
+      C["VerifiedEscrow.sol<br/>holds + pays HBAR"]
+      M[("Mirror node<br/>public reads")]
+      T --> M
+      C --> M
+    end
+    S -->|submit record| T
+    S -->|verdict + hash| C
+    W -.->|"verify: no keys,<br/>no trust in API"| M
+
+    classDef hedera fill:#e8f0fe,stroke:#3367d6,color:#0b2a66
+    class T,C,M hedera
+    style OFF fill:#fafafa,stroke:#9aa0a6
+    style HED fill:#f5f9ff,stroke:#3367d6

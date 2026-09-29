@@ -582,7 +582,7 @@ Stored on the `contracts.status` column; each step is idempotent and resumable a
 ```mermaid
 stateDiagram-v2
     [*] --> DRAFT
-    DRAFT --> FUNDED: createEscrow tx ok (sync; on failure stay DRAFT + 502)
+    DRAFT --> FUNDED: createEscrow tx ok (sync, on failure stay DRAFT + 502)
     FUNDED --> EVALUATING: deliverable submitted (atomic claim)
     EVALUATING --> ANCHORING: record built (verdict, or EVALUATION_ERROR fail record)
     EVALUATING --> ERROR: evaluator unreachable / timeout

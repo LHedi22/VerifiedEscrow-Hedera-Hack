@@ -1,0 +1,20 @@
+flowchart LR
+    S["SOW + deliverable"] --> J["AI judges<br/>qwen2.5 · local"]
+    J --> R["Canonical record<br/>8 fields · SHA-256"]
+    R --> H[("HCS topic<br/>record anchored")]
+    H --> C{"Mirror node<br/>confirms hash?"}
+    C -->|yes| V["Verdict revealed<br/>to the parties"]
+    V --> K["VerifiedEscrow.sol<br/>submitVerdict(hash)"]
+    K -->|pass| P["HBAR released<br/>to freelancer"]
+    K -->|fail| Q["Held for<br/>arbitrator"]
+    H -.->|"public, forever"| A(["Anyone verifies<br/>from the mirror node"])
+    K -.-> A
+
+    classDef hedera fill:#e8f0fe,stroke:#3367d6,color:#0b2a66
+    classDef gate fill:#fff4e5,stroke:#e8710a,color:#5a2d00
+    classDef good fill:#e6f4ea,stroke:#188038,color:#0d3b1e
+    classDef hold fill:#fce8e6,stroke:#c5221f,color:#5c0f0e
+    class H,K,A hedera
+    class C gate
+    class P good
+    class Q hold

@@ -1,0 +1,10 @@
+flowchart LR
+    B[Browser<br/>Next.js 14 · web] -->|REST, X-Persona| A[api<br/>FastAPI]
+    B -->|verify: mirror REST + contracts/call| M[(Hedera mirror node)]
+    A -->|/api/chat| O[Ollama<br/>qwen2.5:7b-instruct]
+    A -->|internal token| H[hedera-svc<br/>Express + @hashgraph/sdk + ethers v6]
+    A --> P[(Postgres 16<br/>Docker)]
+    H -->|HCS submit| T[(HCS topic)]
+    H -->|JSON-RPC relay| C[VerifiedEscrow.sol]
+    T --> M
+    C --> M

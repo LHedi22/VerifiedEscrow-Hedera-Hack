@@ -1,0 +1,18 @@
+flowchart TD
+    D[/ Dashboard/]
+    N[/contracts/new<br/>Create contract/]
+    C[/contracts/:id<br/>Contract detail/]
+    A[/arbitration<br/>Held queue/]
+    V0[/verify<br/>Lookup/]
+    V[/verify/:escrowId<br/>Verification result/]
+    S[/dev/selftest<br/>Hash self-test/]
+
+    D -->|client: + New| N
+    N -->|Create draft| C
+    D -->|row click| C
+    A -->|row click| C
+    C -->|Verify this record| V
+    A -->|Verify| V
+    D -->|nav Verify| V0
+    V0 -->|enter escrow ID| V
+    V -->|View contract| C

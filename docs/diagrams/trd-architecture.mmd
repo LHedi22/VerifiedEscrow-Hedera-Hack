@@ -1,0 +1,15 @@
+flowchart LR
+    subgraph Laptop
+      W[web · Next.js] -->|REST| A[api · FastAPI]
+      A --> P[(Postgres)]
+      A -->|/api/chat| O[Ollama]
+      A -->|REST + shared secret| H[hedera-svc · Node]
+      A -->|confirm reads| M
+      D[[shared/deployment.json]] -.->|bundled at build| W
+      D -.-> H
+      D -.-> A
+    end
+    H -->|HCS submit · SDK| T[Hedera testnet]
+    H -->|contract calls · ethers| R[Hashio JSON-RPC relay] --> T
+    T --> M[Mirror node REST]
+    W -.->|verification reads: topic messages + contract state, direct from browser| M
