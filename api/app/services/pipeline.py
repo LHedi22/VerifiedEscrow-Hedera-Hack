@@ -92,9 +92,11 @@ def retry(contract_id: int) -> None:
 
 def start_criteria_extraction(contract_id: int) -> asyncio.Task:
     """At funding: extract and cache criteria so the live wait is the evaluation step only (TRD §8.1).
-    One extraction per contract: a task that is running (or already finished) is returned, never duplicated."""
+    One extraction at a time per contract: a running task is returned, never duplicated. A finished one is
+    replaced, because demo/reset reuses DB ids (the old task's cache row is gone); _extract_criteria itself
+    returns at once if criteria are already cached."""
     t = _criteria_tasks.get(contract_id)
-    if t is None:
+    if t is None or t.done():
         t = _criteria_tasks[contract_id] = asyncio.create_task(_extract_criteria(contract_id), name=f"criteria-{contract_id}")
     return t
 

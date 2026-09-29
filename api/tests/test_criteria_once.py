@@ -125,3 +125,28 @@ def test_deliverable_one_second_after_funding_reuses_the_running_extraction(test
 
     print(f"\nfund returned in {fund_s * 1000:.0f} ms; Ollama calls: {calls}")
     assert calls == {"criteria": 1, "evaluation": 1}
+
+
+def test_running_extraction_is_reused_but_a_finished_one_is_replaced(monkeypatch):
+    """demo/reset reuses DB ids: a finished task from before the reset must not stand in for a new extraction."""
+    from app.services import pipeline
+
+    started = []
+
+    async def fake_extract(contract_id):
+        started.append(contract_id)
+        await asyncio.sleep(0.05)
+
+    async def scenario():
+        monkeypatch.setattr(pipeline, "_extract_criteria", fake_extract)
+        pipeline._criteria_tasks.pop(4242, None)
+        a = pipeline.start_criteria_extraction(4242)
+        b = pipeline.start_criteria_extraction(4242)  # still running: same task
+        assert a is b
+        await a
+        c = pipeline.start_criteria_extraction(4242)  # finished: a new extraction
+        assert c is not a
+        await c
+
+    asyncio.run(scenario())
+    assert started == [4242, 4242]

@@ -584,7 +584,8 @@ Run inside the container: `docker compose exec db psql -U vte -d vte`, then `\i 
 ```sql
 -- "Same access a malicious operator has": flip S2's failed verdict to a pass.
 \set ON_ERROR_STOP on
-SELECT id AS target FROM contracts WHERE title = 'Product FAQ for Olive & Co' ORDER BY id LIMIT 1 \gset
+-- The most recent seeded S2 still under review (highest id), so a second seed run never picks a stale row.
+SELECT id AS target FROM contracts WHERE title = 'Product FAQ for Olive & Co' AND status = 'HELD' ORDER BY id DESC LIMIT 1 \gset
 
 BEGIN;
 UPDATE evaluations
@@ -602,7 +603,7 @@ SELECT c.id, c.escrow_id, c.status, e.verdict, left(e.reasoning, 60) AS reasonin
  WHERE c.id = :target;
 ```
 
-`\gset` stops the script with an error if S2 is missing. v1.0's inline sub-select would also fail with "more than one row" if seeding had run twice.
+`\gset` stops the script with an error if there is no HELD S2 (for example, after it was already tampered: run `demo/reset` first). It targets the **highest-id HELD** S2, so it still picks the current seed if seeding ran more than once. v1.0's inline sub-select would fail with "more than one row" in that case.
 
 **Expected on-screen result:**
 
@@ -629,4 +630,4 @@ SELECT c.id, c.escrow_id, c.status, e.verdict, left(e.reasoning, 60) AS reasonin
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | `/verify` keyed by escrow ID with the `confirmed_at` gate. Atomic claim instead of a row lock. EVALUATION_ERROR is anchored and held on-chain. SUBMITTING_VERDICT reconcile row. ERROR → retry row. Checks: ERROR ⇔ `error_step`, amount ≤ 100 ℏ, reasoning ≤ 3,000, record ≤ 18,000, sequence sanity. `hcs_anchors` sequences NOT NULL (from `executeAll` receipts). `chain_txs.events` array. `/hcs/submit` takes `expectedHash`; `/accounts` replaces `/balances`; `verdictPassed` in `/escrow/:id`. Seed personas read from `hedera-svc`. Seeds reference `06-DEMO-CONTENT.md`, 5 ℏ each, and `seed.py` asserts end states. Snapshot/reset rebuilt to be data-only, container-side and PowerShell-safe. `tamper.sql` uses `\gset` and ON_ERROR_STOP. New recycle script. Size figures measured. |
-| 27 Sep (build) | §8.1: personas are created at `api` startup. §5.2: `criteria_ready`. §5.3 `/health`: `forced_eval_error`. |
+| 27 Sep (build) | §8.4: `tamper.sql` targets the highest-id S2 with status HELD. §8.1: personas are created at `api` startup. §5.2: `criteria_ready`. §5.3 `/health`: `forced_eval_error`. |
