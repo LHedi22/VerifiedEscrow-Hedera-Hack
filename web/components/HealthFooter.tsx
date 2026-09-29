@@ -9,7 +9,7 @@ const DEPS: [keyof Health, string][] = [["db", "db"], ["ollama", "ollama"], ["he
 
 /** GET /health every 10 s (App Flow §2). Red if a dependency is down or the forced evaluation-error mode is on. */
 export default function HealthFooter() {
-  const { data, error } = useSWR<Health>("/health", publicFetcher, { refreshInterval: 10_000 });
+  const { data, error } = useSWR<Health>("/health", publicFetcher, { refreshInterval: 10_000, isPaused: () => false });
   const down = data ? DEPS.filter(([k]) => data[k] !== "ok").map(([, l]) => l) : [];
   const forced = !!data?.forced_eval_error;
   const state = error ? "bad" : forced ? "bad" : down.length ? (down.length > 1 || down.includes("db") ? "bad" : "warn") : "";

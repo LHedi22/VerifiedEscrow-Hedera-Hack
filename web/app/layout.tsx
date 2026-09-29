@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import Header from "@/components/Header";
 import HealthFooter from "@/components/HealthFooter";
 import Providers from "@/components/Providers";
+import Toasts from "@/components/Toasts";
 import type { Role } from "@/lib/api";
 import { PERSONA_COOKIE, ROLES } from "@/lib/persona";
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers persona={persona}>
+          <Toasts />
           <Header />
           <main className="page">{children}</main>
           <HealthFooter />
