@@ -229,6 +229,8 @@ Contract calls go through the JSON-RPC relay, so the funding and verdict transac
 
 The active step shows a spinner plus an elapsed-time counter. This makes the demo read as live work, not a hang (spec §14).
 
+**Criteria sub-step.** From funding until the criteria are cached, the Funded step (and then Evaluating) shows "Reading the SOW…" with a spinner. Once `criteria_ready` is true, it shows "✓ Criteria ready", with "(reused from an identical SOW)" when they were copied from a contract with the same `sow_hash` (TRD §8.2). The timeline then has a "Criteria reused" entry naming the source escrow.
+
 #### Evaluation section (once `/evaluation` returns `available: true`)
 
 - The **verdict** with its confidence bar.

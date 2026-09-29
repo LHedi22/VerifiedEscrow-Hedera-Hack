@@ -79,6 +79,11 @@ export default function Stepper({ c }: { c: Contract }) {
   }
 
   const durations = stepDurations(tl);
+  const reused = tl.some((e) => e.kind === "criteria_reused");
+  // Criteria sub-step (TRD §8.1 fallback 1): shown under Funded while waiting for work, and under Evaluating.
+  const criteriaLine = c.criteria_ready
+    ? <span className="substep ready" data-testid="criteria-substep" data-ready="true">✓ Criteria ready{reused ? " (reused from an identical SOW)" : ""}</span>
+    : <span className="substep" data-testid="criteria-substep" data-ready="false"><span className="spinner" style={{ width: 11, height: 11 }} /> Reading the SOW…</span>;
   return (
     <ol className="stepper" data-testid="stepper" data-status={c.status}>
       {STEPS.map((s, i) => {
@@ -102,17 +107,14 @@ export default function Stepper({ c }: { c: Contract }) {
                     {s.key === "evaluating" && !c.criteria_ready ? "Reading the SOW…" : s.active}
                     {s.key === "confirming" && elapsed !== undefined && elapsed > SLOW_S * 1000 && " …taking longer than usual"}
                     {elapsed !== undefined && <span className="elapsed mono" data-testid="elapsed"> {secs(elapsed)}</span>}
-                    {s.key === "evaluating" && (
-                      <span className="substep" data-testid="criteria-substep">
-                        {c.criteria_ready ? "✓ Criteria extracted at funding" : "Extracting criteria from the SOW…"}
-                      </span>
-                    )}
+                    {s.key === "evaluating" && criteriaLine}
                   </>
                 )}
                 {done && !isPaused && (
                   <>
                     {doneLabel(s)}
                     {took !== undefined && <span className="muted mono nowrap"> · {secs(took)}</span>}
+                    {s.key === "funded" && c.status === "FUNDED" && criteriaLine}
                   </>
                 )}
               </div>

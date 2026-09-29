@@ -150,3 +150,49 @@ def test_running_extraction_is_reused_but_a_finished_one_is_replaced(monkeypatch
 
     asyncio.run(scenario())
     assert started == [4242, 4242]
+
+
+def test_identical_sow_reuses_stored_criteria_without_ollama(test_db, monkeypatch):
+    """Criteria cache by sow_hash: funding a contract whose SOW matches one with stored criteria copies them."""
+    from app.main import app
+    from app.routers import personas
+    from app.services import evaluator, hedera_client
+
+    calls = {"criteria": 0}
+    sow = SOW + " (reuse test)"
+
+    async def fake_chat(system, user, schema, max_tokens):
+        calls["criteria"] += 1
+        return CRITERIA_JSON
+
+    escrows = iter([515151, 525252])
+
+    async def fake_escrow_create(amount, fr, ar, sow_hash):
+        return hedera_client.ChainTx(tx_hash="0x" + "cd" * 32, events=[]), next(escrows)
+
+    async def noop(*_a, **_k):
+        return None
+
+    monkeypatch.setattr(evaluator, "_chat", fake_chat)
+    monkeypatch.setattr(evaluator, "warm_up", noop)
+    monkeypatch.setattr(personas, "sync_personas", noop)
+    monkeypatch.setattr(hedera_client, "escrow_create", fake_escrow_create)
+
+    def fund_new(client):
+        r = client.post("/contracts", headers={"X-Persona": "client"}, json={"title": "Reuse", "sow": sow, "amount_hbar": "5"})
+        cid = r.json()["id"]
+        assert client.post(f"/contracts/{cid}/fund", headers={"X-Persona": "client"}).status_code == 200
+        deadline = time.monotonic() + 10
+        while not client.get(f"/contracts/{cid}").json()["criteria_ready"] and time.monotonic() < deadline:
+            time.sleep(0.1)
+        return client.get(f"/contracts/{cid}").json()
+
+    with TestClient(app) as client:
+        first = fund_new(client)  # extracts once
+        assert calls["criteria"] == 1 and first["criteria_ready"]
+        second = fund_new(client)  # identical SOW: copied, no Ollama call
+    assert calls["criteria"] == 1
+    assert second["criteria_ready"] is True
+    reused = [e for e in second["timeline"] if e["kind"] == "criteria_reused"]
+    assert reused and reused[0]["message"] == "Criteria reused from an identical SOW (escrow #515151)", second["timeline"]
+    assert not [e for e in first["timeline"] if e["kind"] == "criteria_reused"]

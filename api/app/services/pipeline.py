@@ -10,7 +10,7 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 
 from app.config import settings
 from app.db import SessionLocal
@@ -114,11 +114,36 @@ async def _wait_for_criteria(contract_id: int) -> None:
         log.warning("funding-time criteria extraction for %s failed: %r", contract_id, e)
 
 
+def reuse_criteria(contract_id: int) -> bool:
+    """Criteria cache by sow_hash: an identical (normalized) SOW already has criteria on another contract, so copy
+    them instead of asking Ollama again. One transaction; adds a timeline entry naming the source escrow."""
+    with SessionLocal.begin() as s:
+        if s.scalar(select(Evaluation.id).where(Evaluation.contract_id == contract_id)):
+            return True  # already cached
+        c = s.get(Contract, contract_id)
+        src = s.execute(
+            select(Evaluation.criteria, Contract.escrow_id, Contract.id)
+            .join(Contract, Contract.id == Evaluation.contract_id)
+            .where(Contract.sow_hash == c.sow_hash, Contract.id != contract_id,
+                   func.jsonb_array_length(Evaluation.criteria) > 0)
+            .order_by(Contract.id).limit(1)
+        ).first()
+        if src is None:
+            return False
+        criteria, src_escrow, src_id = src
+        s.add(Evaluation(contract_id=contract_id, criteria=criteria, attempts=0))
+        label = f"escrow #{src_escrow}" if src_escrow is not None else f"contract {src_id}"
+        timeline(s, contract_id, "criteria_reused", f"Criteria reused from an identical SOW ({label})",
+                 {"source_contract_id": src_id, "source_escrow_id": src_escrow})
+    log.info("criteria for contract %s reused from contract %s (same sow_hash)", contract_id, src_id)
+    return True
+
+
 async def _extract_criteria(contract_id: int) -> None:
+    if reuse_criteria(contract_id):
+        return  # cached, or copied from an identical SOW: no Ollama call
     with SessionLocal() as s:
         sow = s.get(Contract, contract_id).sow
-        if s.scalar(select(Evaluation.id).where(Evaluation.contract_id == contract_id)):
-            return  # already cached
     try:
         criteria, attempts, failures = await evaluator.extract_criteria(sow)
     except evaluator.EvaluatorUnavailable as e:
@@ -162,6 +187,7 @@ async def _run(contract_id: int) -> None:
 async def _evaluate(contract_id: int) -> None:
     """EVALUATING -> ANCHORING. Ollama unreachable/timeout -> ERROR (nothing anchored)."""
     await _wait_for_criteria(contract_id)  # never a second extraction while the funding-time one runs
+    reuse_criteria(contract_id)  # funding-time task missing or failed: an identical SOW's criteria still count
     with SessionLocal() as s:
         c = s.get(Contract, contract_id)
         sow = c.sow

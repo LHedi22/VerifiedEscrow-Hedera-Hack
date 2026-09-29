@@ -487,6 +487,8 @@ This removes the most common Hedera-EVM surprises before the real contract depen
 
 **Step 1 — Criteria extraction.** Results are cached per contract in `evaluations.criteria`; there is no separate `acceptance_criteria` table. It runs when the deliverable is submitted, or at funding time if the benchmark requires it. **It runs at funding time:** the benchmark required it (§8.1).
 
+**Criteria cache by `sow_hash`.** Before calling Ollama, the step looks for another contract with the same `sow_hash` (the SHA-256 of the normalized SOW) whose `evaluations.criteria` is non-empty. If one exists, its criteria are copied, no model call is made, and a timeline entry reads "Criteria reused from an identical SOW (escrow #N)". The evaluation step's fallback tries the same cache before extracting. On stage, the live contract uses the S1 SOW ("Use example SOW"), so its criteria come from the seeded S1 and the live wait is the evaluation call alone. Criteria are display-only and not anchored (Schema §4.1), so reusing them changes no hashed field. Covered by `api/tests/test_criteria_once.py`.
+
 Output schema:
 ```json
 { "criteria": [ { "id": "C1", "description": "string", "required": true } ] }
@@ -841,4 +843,5 @@ v1.0 said contracts can't read HCS "because EVM execution must be deterministic"
 | Version | Change |
 | --- | --- |
 | v1.1 (26 Sep) | HIP-478 claim corrected (§15). `/verify` keyed by escrow ID; browser takes topic and contract from bundled `deployment.json`; checks `contract_id`. One topic per deployment. HCS: `executeAll` (v1.0's `execute()` returns only chunk 1), single-flight submits, bounded mirror query, reassembly rules. Contract: `verdictPassed`, distinct parties, non-zero hash, solc pinned; 8 tests written and passing. Oracle-consistency check promoted to P1 with 4 checks. EVALUATION_ERROR now anchored + submitted as a fail, so the arbitrator can resolve it (v1.0 left funds stuck). Row lock replaced by atomic claim; resume covers `EVALUATING`; `SUBMITTING_VERDICT` reconciles from chain; `ERROR` is resumable. Visibility gate unified on mirror confirmation. Normalization: explicit ASCII strip set, NUL rejected; timestamp generator; `model_version` format unified. `@noble/hashes` replaces `crypto.subtle`. Ollama `keep_alive`, `num_ctx`, semaphore, benchmark gate. Injection regex backstop. Criteria stored in `evaluations.criteria`. Keys/units/nonce/fee gotchas. Demo amount 5 ℏ; faucet and testnet-reset checks. `.env` one variable per line; `HCS_TOPIC_ID` moved to `deployment.json`. Windows/WSL notes. Trust model: re-anchoring attack, public-content limitation. |
+| 30 Sep (build) | §8.2: criteria cache by `sow_hash`. |
 | 27 Sep (build) | §8.1: fallback 1 active, measured timings, single criteria extraction per contract, `forced_eval_error`. §8.2: criteria run at funding. §7.3: Hashio relay fixes (no batching, explicit `gasPrice`, `staticCall` preflight, pinned-nonce retries). |

@@ -370,3 +370,4 @@ details.card > summary { cursor: pointer; color: var(--text); }
   .stepper { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 .nowrap { white-space: nowrap; }
+.substep.ready { color: var(--green); font-weight: 600; }

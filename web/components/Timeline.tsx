@@ -6,7 +6,7 @@ import HashPill from "./HashPill";
 const LABEL: Record<string, string> = {
   created: "Created", funded: "Funded", submitted: "Deliverable submitted", evaluated: "Evaluated", anchored: "Anchored",
   confirmed: "Confirmed", released: "Released", held: "Held", refunded: "Refunded", error: "Error", retried: "Retried",
-  reconciled: "Reconciled", disputed: "Disputed",
+  reconciled: "Reconciled", disputed: "Disputed", criteria_reused: "Criteria reused",
 };
 
 /** App Flow §5.3 "Timeline": chronological, each with a timestamp and a link. Never shows the verdict. */
