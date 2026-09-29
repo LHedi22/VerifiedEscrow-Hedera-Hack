@@ -1,4 +1,8 @@
-# Day 4 report: stopped on the ≤ 40 s stage target
+# Day 4 report
+
+> **Decision (29 Sep, later):** about 50 s is accepted. NFR-2 (≤ 60 s) is met. **≤ 40 s was a stretch target**; measured 47–53 s deliverable → Paid over three production-build runs. No model change. The rest of this first part is the report as written when I stopped; part 2 below follows the decision.
+
+## Part 1: stopped on the ≤ 40 s stretch target
 
 *29 Sep 2026, evening. Both speed and memory fixes are in. The ≤ 40 s deliverable → Paid target is still missed: the three production-build runs took 47–53 s. That's a stop condition, so the pulled-forward P1 work (T5.2, T5.1, T4.3, T4.4, T4.5, T5.3, T5.5) was **not** done, apart from unverified T5.1/T4.3 code parked on a branch. No model was changed.*
 
@@ -84,3 +88,127 @@ The API timeline gives submit → released as 48 s, 47 s and 47 s. The browser f
 | freelancer | 3.01 ℏ |
 | arbitrator | 14.59 ℏ |
 | oracle | 893.67 ℏ |
+
+## Part 2: after the decision (29 Sep, 20:15–20:55)
+
+### Commits
+
+| Commit | What | Check output |
+| --- | --- | --- |
+| `dd0610c` | Docs: accept ~50 s — TRD §17 (measured 47–53 s, NFR-2 met, 40 s stretch), App Flow §9 fallbacks (expected pace; "Ollama slow or down → restart api with `DEMO_REPLAY=1`"), Plan §10 `docker stop mongodb` after any Docker restart | — |
+| `1e1226c` | Tooling: `start-all.ps1 -Only <svc>` and `-Replay`; `stop-all.ps1` (stops only start-all's own `vte …` windows) | Both parse under PS 5.1, ASCII-only |
+| `8b220dd` | **T5.1** oracle-consistency check (FR-25) | See below |
+| `e1d81b4` | **T4.3** topic scan (FR-30) | See below |
+| `ea9247d` | **T5.2** replay fallback (FR-29) | See below |
+| `1a304e1` | **T4.4** chips + Insert sample (check only; UI from T3.5/T5.2) | See below |
+| `11c800a` | **T4.5** dispute flag | See below |
+| `b0e86b2` | **T5.3** projector polish | See below |
+| `a30af98` | **T5.5** README | All 16 HashScan links resolve on the mirror node (HTTP 200) |
+| `dd9827e` on branch **`opt2-short-output`** | Option 2, **not adopted** | See below |
+
+`wip/t5.1-t4.3` was verified, merged as the two separate commits `8b220dd` and `e1d81b4`, and then deleted. `main`'s `web/` is identical to the verified branch.
+
+### Check outputs
+
+**T5.1** (`scripts/ui/oracle_check.py`, production build):
+
+```
+escrow #15: MATCH   row: Escrow contract ✓ / HCS ✓ / App ✓   checks 4/4 ✓   anchored panel: Verdict PASS
+escrow #16: MATCH   row: Escrow contract ✓ / HCS ✓ / App ✓   checks 4/4 ✓   anchored panel: Verdict FAIL
+escrow #17: MATCH   row: Escrow contract ✓ / HCS ✓ / App ✓   checks 4/4 ✓   anchored panel: Verdict FAIL
+after \i /demo/tamper.sql:
+escrow #16: MISMATCH  row: Escrow contract ✓ / HCS ✓ / App ✗  checks 4/4 ✓ (against the anchored record)  anchored panel: Verdict FAIL
+```
+
+**T4.3:**
+
+```
+backup demo/backup-20260929-202541.dump; DELETE FROM contracts WHERE escrow_id = 16 → 0 rows left; api /verify/16 → 404
+escrow #16: FOUND_ON_HEDERA  row: Escrow contract ✓ / HCS ✓ / App —  checks 4/4  scan: 1 distinct record  anchored panel: Verdict FAIL
+reset.ps1 → escrow #16: MATCH, ✓ / ✓ / ✓
+scan_states.py (injected mirror messages):
+  different second record → MULTIPLE_RECORDS "(2). The one matching the on-chain verdictHash (03f3…ed17) is authoritative."
+  identical resubmission  → MATCH, "1 distinct record for escrow #16 (identical resubmissions merged)"
+```
+
+**T5.2** (replay):
+- **Recording:** S1's real evaluation (contract 1, escrow #15), recorded into `api/app/replay/recordings.json`.
+- **Unit test:** `DEMO_REPLAY` with Ollama fully offline gives `replay/ollama/qwen2.5:7b-instruct@845dbda0ea48`, verdict pass; pytest 44/44.
+- **Testnet end to end, once,** with `start-all -Only api -Replay` and the 7B unloaded (`ollama ps` empty before and after):
+
+  | Step | Time |
+  | --- | --- |
+  | submitted → evaluated | +0.06 s |
+  | → anchored | +1.9 s |
+  | → confirmed | +2.1 s |
+  | → released | +7.5 s |
+  | **deliverable → Paid** | **11.6 s** (escrow #22) |
+
+- **Verify:** `/verify/22` is MATCH with oracle checks 4/4. `/health` shows `replay_mode: true`. The footer shows "REPLAY MODE (DEMO_REPLAY=1)…". The contract and verify pages show the "Replayed verdict (demo fallback)" chip.
+- **Links:** [funding](https://hashscan.io/testnet/transaction/1790710296.080613743) · [HCS seq 30–31](https://hashscan.io/testnet/transaction/0.0.10742743-1790710300-326777533) · [verdict](https://hashscan.io/testnet/transaction/1790710312.880653460)
+
+**T4.4:**
+
+```
+S3 injection chip: "Deliverable contained instructions aimed at the evaluator."
+replay chip (escrow #22's contract): "Replayed verdict (demo fallback)"
+Insert sample → good: 934 chars = S1 deliverable; → weak: 686 chars = S2 deliverable
+```
+
+**T4.5:**
+
+```
+client flags RELEASED S1 → header chip "Disputed"; timeline "Disputed by the client"; banner "Verify this record →" /verify/15;
+"Flag as disputed" link gone; DB disputed = t with the reason. reset.ps1 after.
+```
+
+**T5.3** (1280 px projector at 125 % = 1024 CSS px):
+- no horizontal overflow on the detail, verify or dashboard pages;
+- stepper durations moved to their own line, so they no longer overlap the next step;
+- verify checklist lines stay next to their checkbox;
+- the "Escrow contract / HCS / App" row fits on one line (38.5 px);
+- copy buttons added to the tx pills.
+
+Before and after screenshots: `docs/progress/day4/t5.3-*`.
+
+### Option 2 (shorter output): not adopted
+
+The branch `opt2-short-output` changes the prompt (evidence ≤ 150 characters, reasoning ≤ 600) and sets the evaluation `num_predict` to 700 (it was 1200).
+
+| eval_suite | S1 | S2 | S3 | E4 | E5 | E6 |
+| --- | --- | --- | --- | --- | --- | --- |
+| run 1 | ✓ pass | ✓ fail | ✓ fail, flagged | ✓ pass | ✓ pass | ✓ fail |
+| run 2 | **✗ fail** (met 4/5; expected pass) | stopped | | | | |
+
+- **Adoption required 6/6 on all 3 runs,** so after S1 flipped in run 2 I stopped the suite (my own job) and skipped the live runs.
+- **Timing:** per-case times on the branch were 39–62 s for both steps, with no visible gain over main's 42–55 s from T1.9.
+- **Why little gain was expected:** the real outputs were already short. Reasoning in the seeds is 84–232 characters and the longest evidence string is 187, so the time goes on processing the input prompt, not on output.
+- **`main` keeps the original prompt and 1200.** Log: `docs/progress/day4/option2-eval-suite.log` on the branch.
+
+### Deviations (part 2)
+
+1. **T5.2 replay:**
+   - The deliverable endpoint skips its Ollama health check when a recording matches.
+   - `DEMO_REPLAY=1` skips the api's startup warm-up.
+   - With no matching recording, it evaluates live and logs a warning.
+   - Documented as TRD §8.3a.
+2. **The contract page's "Evaluator offline" submit block is lifted in replay mode.**
+3. **`scripts/ui/e2e_flow.py` and `run_sheet.py` accept any post-submit state.** A replayed verdict leaves EVALUATING within one poll.
+4. **T4.4 has no new code:** the chips and menu shipped with T3.5 and T5.2, and this commit carries only the check.
+5. **The consistency row shows "App —" when the app has no record** (the deleted-rows case). App Flow §5.6 doesn't specify this state.
+
+### Final state
+
+- **DB:** `reset.ps1` restored the seeds. S1/S2/S3 verify MATCH with Escrow contract ✓ / HCS ✓ / App ✓.
+- **Recycle:** moved 4.99 ℏ back to the client.
+- **Running:** the production stack (hedera-svc, api in normal mode, `next start` built from `main`) in its own windows; Postgres; Ollama with the 7B warm (`Forever`). Only `hederahack-db-1` runs in Docker.
+- **Balances:**
+
+  | Account | Balance |
+  | --- | --- |
+  | client | 67.94 ℏ |
+  | freelancer | 3.01 ℏ |
+  | arbitrator | 14.59 ℏ |
+  | oracle | 893.55 ℏ |
+
+- **Free RAM:** 1.79 GB with everything up and the model loaded.
