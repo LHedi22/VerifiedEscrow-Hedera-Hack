@@ -4,7 +4,7 @@
 // the sequence pointers, and every pointer it gives is checked.
 import { Interface } from "ethers";
 import { KEYS, bytesHash, recordHash } from "canonical";
-import { fetchWindow, reassemble } from "canonical/hcs";
+import { type MirrorMessage, fetchWindow, reassemble } from "canonical/hcs";
 import { API_URL, type VerifyResponse } from "./api";
 import { ABI, CONTRACT_ADDRESS, MIRROR_URL, TOPIC_ID } from "./deployment";
 
@@ -33,8 +33,16 @@ export type Outcome =
   | { kind: "incomplete"; have: number; total: number }
   | { kind: "unparseable" } // anchored bytes aren't a v1 record
   | { kind: "wrong_escrow"; anchoredFor: string }
+  | { kind: "found_on_hedera"; hash: string } // app has no such contract, but the topic scan found its record (FR-30)
+  | { kind: "multiple_records"; hashes: string[]; authoritative: string | null; base: Outcome } // FR-30 red state
   | { kind: "match"; dbHash: string; hcsHash: string; diff: DiffRow[] }
   | { kind: "mismatch"; dbHash: string; hcsHash: string; diff: DiffRow[] };
+
+/** One distinct anchored record found by the topic scan (identical resubmissions collapse into one). */
+export type ScannedRecord = {
+  hash: string; record: Record<string, string>; txId: string;
+  sequenceFirst: number; sequenceLast: number; consensusTimestamp: string; copies: number;
+};
 
 /** P1 oracle-consistency check (FR-25, TRD §11 step 7): does the escrow contract commit to the anchored record? */
 export type OracleChecks = { hash: boolean; verdict: boolean; sow: boolean; exists: boolean; all: boolean };
@@ -50,6 +58,50 @@ export function oracleChecks(chain: ChainEscrow, rec: Record<string, string>, hc
   return { ...c, all: c.hash && c.verdict && c.sow && c.exists };
 }
 
+/**
+ * FR-30 topic scan: read the whole topic (bundled ID, following links.next), reassemble every record and keep the
+ * ones for this escrow. Needs no backend pointer, so it still works when the app's DB rows are gone.
+ */
+export async function scanTopic(escrowId: number): Promise<ScannedRecord[]> {
+  const msgs: MirrorMessage[] = [];
+  let url: string | null = `${MIRROR_URL}/api/v1/topics/${TOPIC_ID}/messages?limit=100&order=asc`;
+  for (let page = 0; url && page < 50; page++) {
+    const r: Response = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`mirror node HTTP ${r.status}`);
+    const body: { messages?: MirrorMessage[]; links?: { next?: string | null } } = await r.json();
+    msgs.push(...((body.messages ?? []) as MirrorMessage[]));
+    url = body.links?.next ? `${MIRROR_URL}${body.links.next}` : null;
+  }
+  // Group chunks by their initial transaction; a message without chunk_info is a complete 1-of-1 record.
+  const groups = new Map<string, MirrorMessage[]>();
+  for (const m of msgs) {
+    const init = m.chunk_info?.initial_transaction_id;
+    const key = init ? `${init.account_id}@${init.transaction_valid_start}` : `single:${m.sequence_number}`;
+    groups.set(key, [...(groups.get(key) ?? []), m]);
+  }
+  const byHash = new Map<string, ScannedRecord>();
+  for (const [key, group] of groups) {
+    const got = reassemble(group, key.startsWith("single:") ? "0.0.0@0.0" : key);
+    if (!got.ok) continue;
+    let rec: Record<string, string>;
+    try {
+      rec = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(got.bytes));
+    } catch {
+      continue; // not a v1 record
+    }
+    if (rec?.contract_id !== String(escrowId)) continue;
+    const hash = bytesHash(got.bytes);
+    const prev = byHash.get(hash);
+    if (prev) { prev.copies += 1; continue; }
+    byHash.set(hash, {
+      hash, record: rec, txId: key, sequenceFirst: got.chunks[0].sequence_number,
+      sequenceLast: got.chunks[got.chunks.length - 1].sequence_number,
+      consensusTimestamp: got.chunks[got.chunks.length - 1].consensus_timestamp, copies: 1,
+    });
+  }
+  return [...byHash.values()];
+}
+
 export type DiffRow = { field: string; db: string | undefined; hcs: string | undefined; same: boolean };
 
 export type Verification = {
@@ -62,6 +114,7 @@ export type Verification = {
   hcsHash?: string;
   chain?: ChainEscrow | { error: string };
   oracle?: OracleChecks; // P1 (FR-25): set once both the chain read and the anchored record are in
+  scan?: ScannedRecord[] | { error: string }; // P1 (FR-30)
 };
 
 const STATUS = ["None", "Funded", "Released", "Held", "Refunded"] as const;
@@ -127,14 +180,32 @@ export async function verify(escrowId: number, onUpdate: (v: Verification) => vo
     return v;
   };
 
-  // The on-chain read (FR-25) runs alongside the P0 checks and is folded in by finishAll():
-  // it can turn a check red, never a result green.
+  // The on-chain read (FR-25) and the topic scan (FR-30) run alongside the P0 checks and are folded in by
+  // finishAll(): they can turn a result red, never green.
   const chainP = readEscrow(escrowId).then(
     (chain) => { v.chain = chain; emit(); return chain; },
     (e) => { v.chain = { error: String(e?.message ?? e) }; emit(); return null; },
   );
+  const scanP = scanTopic(escrowId).then(
+    (s) => { v.scan = s; emit(); return s; },
+    (e) => { v.scan = { error: String(e?.message ?? e) }; emit(); return null; },
+  );
   const finishAll = async (outcome: Outcome) => {
-    const chain = await chainP;
+    const [chain, scan] = await Promise.all([chainP, scanP]);
+    // FR-30: 2+ different records for this escrow is red; the one matching the on-chain verdictHash is authoritative.
+    if (scan && scan.length > 1) {
+      const auth = chain ? scan.find((r) => chain.verdictHash === "0x" + r.hash)?.hash ?? null : null;
+      outcome = { kind: "multiple_records", hashes: scan.map((r) => r.hash), authoritative: auth, base: outcome };
+    }
+    // App has no row for this escrow, but Hedera does: show the anchored record (the deletion case).
+    if (outcome.kind === "not_found" && scan && scan.length === 1) {
+      const r = scan[0];
+      v.hcsRecord = r.record;
+      v.hcsHash = r.hash;
+      v.anchor = { topic_id: TOPIC_ID, tx_id: r.txId, sequence_first: r.sequenceFirst, sequence_last: r.sequenceLast,
+                   chunk_count: r.sequenceLast - r.sequenceFirst + 1, consensusTimestamp: r.consensusTimestamp };
+      outcome = { kind: "found_on_hedera", hash: r.hash };
+    }
     if (chain && v.hcsRecord && v.hcsHash) {
       v.oracle = oracleChecks(chain, v.hcsRecord, v.hcsHash);
       step("oracle", v.oracle.all ? "ok" : "fail", v.oracle.all ? undefined : "on-chain commitment differs");

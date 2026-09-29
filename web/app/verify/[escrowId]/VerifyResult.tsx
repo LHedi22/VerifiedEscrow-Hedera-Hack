@@ -52,6 +52,25 @@ function Banner({ outcome, anchorTs, onRetry }: { outcome: Outcome; anchorTs?: s
           <div>No anchored record yet — status: {outcome.status}.</div>
         </div>
       );
+    case "found_on_hedera":
+      return (
+        <div className="vbanner neutral" data-testid="verdict-banner" data-result="FOUND_ON_HEDERA">
+          <span className="vicon" aria-hidden>∅</span>
+          <div>No contract found in this app — <strong>but Hedera holds an anchored record for this escrow</strong>. It is shown below, read straight from the topic.</div>
+        </div>
+      );
+    case "multiple_records":
+      return (
+        <div className="vbanner mismatch" data-testid="verdict-banner" data-result="MULTIPLE_RECORDS" role="alert">
+          <span className="vicon" aria-hidden>⛔</span>
+          <div>
+            <strong>Multiple different records anchored for this escrow</strong> ({outcome.hashes.length}).{" "}
+            {outcome.authoritative
+              ? <>The one matching the on-chain verdictHash (<code>{outcome.authoritative.slice(0, 4)}…{outcome.authoritative.slice(-4)}</code>) is authoritative.</>
+              : "None of them matches the on-chain verdictHash."}
+          </div>
+        </div>
+      );
     case "not_found":
       return (
         <div className="vbanner neutral" data-result="NOT_FOUND">
@@ -181,7 +200,7 @@ const mark = (ok: boolean | undefined) => (ok === undefined ? <span className="m
 
 /** "Escrow contract ✓ / HCS ✓ / App ✗" (App Flow §5.6, FR-25). */
 function ConsistencyRow({ v }: { v: Verification }) {
-  const o = v.outcome;
+  const o = v.outcome.kind === "multiple_records" ? v.outcome.base : v.outcome;
   const app = o.kind === "match" ? true : o.kind === "mismatch" ? false : undefined;
   const hcs = v.hcsHash ? true : ["mirror_unreachable", "incomplete", "unparseable", "wrong_escrow"].includes(o.kind) ? false : undefined;
   const contract = v.oracle?.all;
@@ -213,6 +232,7 @@ function OracleDetail({ c }: { c: OracleChecks }) {
 
 function Evidence({ v, escrowId }: { v: Verification; escrowId: number }) {
   const chain = v.chain;
+  const scan = v.scan;
   return (
     <aside className="card evidence" data-testid="evidence">
       <p className="section-title">Evidence</p>
@@ -237,6 +257,11 @@ function Evidence({ v, escrowId }: { v: Verification; escrowId: number }) {
         <dt>On-chain status</dt>
         <dd data-testid="chain-status">
           {!chain ? <span className="muted">reading…</span> : "error" in chain ? <span className="muted">couldn&apos;t read ({chain.error})</span> : <strong>{chain.status}</strong>}
+        </dd>
+        <dt>Topic scan <span className="muted small">(no backend pointers)</span></dt>
+        <dd data-testid="scan-count">
+          {!scan ? <span className="muted">scanning…</span> : "error" in scan ? <span className="muted">couldn&apos;t scan ({scan.error})</span>
+            : `${scan.length} distinct record${scan.length === 1 ? "" : "s"} for escrow #${escrowId}${scan.some((r) => r.copies > 1) ? " (identical resubmissions merged)" : ""}`}
         </dd>
         <dt>On-chain verdictHash</dt>
         <dd>
@@ -281,7 +306,8 @@ export default function VerifyResult({ escrowId }: { escrowId: number }) {
         <div className="stack">
           <section className="card"><Checklist steps={v.steps} /></section>
           {o.kind === "mismatch" && <DiffTable outcome={o} />}
-          {v.hcsRecord && (o.kind === "match" || o.kind === "mismatch") && (
+          {o.kind === "multiple_records" && o.base.kind === "mismatch" && <DiffTable outcome={o.base} />}
+          {v.hcsRecord && ["match", "mismatch", "multiple_records", "found_on_hedera"].includes(o.kind) && (
             <AnchoredRecord rec={v.hcsRecord} dbContractId={v.dbContractId} />
           )}
           {o.kind === "not_anchored" && v.dbContractId !== undefined && (
